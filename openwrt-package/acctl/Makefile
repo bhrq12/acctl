@@ -22,46 +22,52 @@ endef
 define Build/Prepare
 	# 创建构建目录
 	mkdir -p $(PKG_BUILD_DIR)
-	# 复制所有源代码文件 - 使用正确的相对路径
-	$(CP) $(CURDIR)/../../../../ac $(PKG_BUILD_DIR)/
-	$(CP) $(CURDIR)/../../../../ap $(PKG_BUILD_DIR)/
-	$(CP) $(CURDIR)/../../../../include $(PKG_BUILD_DIR)/
-	$(CP) $(CURDIR)/../../../../lib $(PKG_BUILD_DIR)/
-	$(CP) $(CURDIR)/../../../../scripts $(PKG_BUILD_DIR)/
-	$(CP) $(CURDIR)/../../../../Makefile $(PKG_BUILD_DIR)/
+	# 直接使用源代码目录，不复制文件
+	ACCTL_SRC=$(CURDIR)/../../../../..
+	ln -sf $(ACCTL_SRC)/ac $(PKG_BUILD_DIR)/ac
+	ln -sf $(ACCTL_SRC)/ap $(PKG_BUILD_DIR)/ap
+	ln -sf $(ACCTL_SRC)/include $(PKG_BUILD_DIR)/include
+	ln -sf $(ACCTL_SRC)/lib $(PKG_BUILD_DIR)/lib
+	ln -sf $(ACCTL_SRC)/scripts $(PKG_BUILD_DIR)/scripts
+	ln -sf $(ACCTL_SRC)/Makefile $(PKG_BUILD_DIR)/Makefile
 endef
 
 define Build/Compile
-	# 直接编译lib目录
-	cd $(PKG_BUILD_DIR)/lib && \
+	# 直接在源代码目录中编译
+	ACCTL_SRC=$(CURDIR)/../../../../..
+	
+	# 编译lib目录
+	cd $(ACCTL_SRC)/lib && \
 	$(MAKE) \
 		CC="$(TARGET_CC)" \
-		CFLAGS="$(TARGET_CFLAGS) -I$(STAGING_DIR)/usr/include -I$(PKG_BUILD_DIR)/include" \
+		CFLAGS="$(TARGET_CFLAGS) -I$(STAGING_DIR)/usr/include -I$(ACCTL_SRC)/include" \
 		LDFLAGS="$(TARGET_LDFLAGS) -L$(STAGING_DIR)/usr/lib"
 	
 	# 编译ac目录
-	cd $(PKG_BUILD_DIR)/ac && \
+	cd $(ACCTL_SRC)/ac && \
 	$(MAKE) \
 		CC="$(TARGET_CC)" \
-		CFLAGS="$(TARGET_CFLAGS) -I$(STAGING_DIR)/usr/include -I$(PKG_BUILD_DIR)/include -DSERVER" \
+		CFLAGS="$(TARGET_CFLAGS) -I$(STAGING_DIR)/usr/include -I$(ACCTL_SRC)/include -DSERVER" \
 		LDFLAGS="$(TARGET_LDFLAGS) -L$(STAGING_DIR)/usr/lib -lsqlite3" \
-		LIBDIR="$(PKG_BUILD_DIR)/lib" \
+		LIBDIR="$(ACCTL_SRC)/lib" \
 		LIB="libapctl.o"
 	
 	# 编译ap目录
-	cd $(PKG_BUILD_DIR)/ap && \
+	cd $(ACCTL_SRC)/ap && \
 	$(MAKE) \
 		CC="$(TARGET_CC)" \
-		CFLAGS="$(TARGET_CFLAGS) -I$(STAGING_DIR)/usr/include -I$(PKG_BUILD_DIR)/include -DCLIENT" \
+		CFLAGS="$(TARGET_CFLAGS) -I$(STAGING_DIR)/usr/include -I$(ACCTL_SRC)/include -DCLIENT" \
 		LDFLAGS="$(TARGET_LDFLAGS) -L$(STAGING_DIR)/usr/lib -lsqlite3" \
-		LIBDIR="$(PKG_BUILD_DIR)/lib" \
+		LIBDIR="$(ACCTL_SRC)/lib" \
 		LIB="libapctl.o"
 endef
 
 define Package/acctl/install
+	# 使用源代码目录中的编译产物
+	ACCTL_SRC=$(CURDIR)/../../../../..
 	$(INSTALL_DIR) $(1)/usr/bin
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/ac/acser $(1)/usr/bin/
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/ap/apctl $(1)/usr/bin/
+	$(INSTALL_BIN) $(ACCTL_SRC)/ac/acser $(1)/usr/bin/
+	$(INSTALL_BIN) $(ACCTL_SRC)/ap/apctl $(1)/usr/bin/
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) $(CURDIR)/files/acctl.init $(1)/etc/init.d/acctl
 	$(INSTALL_DIR) $(1)/etc/config
