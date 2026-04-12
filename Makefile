@@ -1,84 +1,62 @@
-TOPDIR = $(CURDIR)
-SCRIPT_DIR = $(TOPDIR)/scripts
-export TOPDIR
+include $(TOPDIR)/rules.mk
 
-ifeq ("$(origin V)", "command line")
-  BUILD_VERBOSE = $(V)
-endif
-ifndef BUILD_VERBOSE
-  BUILD_VERBOSE = 0
-endif
-ifeq ($(BUILD_VERBOSE),1)
-  quiet =
-  Q =
-else
-  quiet=quiet_
-  Q = @
-  MAKEFLAGS += --no-print-directory
-endif
+PKG_NAME:=acctl
+PKG_VERSION:=1.1
+PKG_RELEASE:=1
 
-ifneq ($(findstring s,$(MAKEFLAGS)),)
-  quiet=silent_
-endif
-export quiet Q BUILD_VERBOSE 
+include $(INCLUDE_DIR)/package.mk
 
-echo := :
-quiet_echo := echo
-silent_echo := :
-echo := $($(quiet)echo)
-include $(SCRIPT_DIR)/Kbuild.include
+define Package/acctl
+  SECTION:=net
+  CATEGORY:=Network
+  TITLE:=OpenWrt AC Controller
+  DEPENDS:=+libpthread +libsqlite3
+  URL:=https://your-project-url
+endef
 
+define Package/acctl/description
+  OpenWrt AC Controller for managing Access Points
+  Uses SQLite database for lightweight operation
+endef
 
-# gnu utils
-CC ?= gcc 
-LD ?= ld
-AR ?= ar
-INSTALL ?= install
+define Build/Prepare
+	mkdir -p $(PKG_BUILD_DIR)
+	$(CP) $(CURDIR)/src/* $(PKG_BUILD_DIR)/
+endef
 
-# cross utils
-TARGET=
+define Build/Compile
+	# 编译lib目录
+	$(MAKE) -C $(PKG_BUILD_DIR)/lib \
+		CC="$(TARGET_CC)" \
+		CFLAGS="$(TARGET_CFLAGS) -I$(STAGING_DIR)/usr/include -I$(PKG_BUILD_DIR)/include" \
+		LDFLAGS="$(TARGET_LDFLAGS) -L$(STAGING_DIR)/usr/lib"
+	
+	# 编译ac目录
+	$(MAKE) -C $(PKG_BUILD_DIR)/ac \
+		CC="$(TARGET_CC)" \
+		CFLAGS="$(TARGET_CFLAGS) -I$(STAGING_DIR)/usr/include -I$(PKG_BUILD_DIR)/include -DSERVER" \
+		LDFLAGS="$(TARGET_LDFLAGS) -L$(STAGING_DIR)/usr/lib -lsqlite3" \
+		LIBDIR="$(PKG_BUILD_DIR)/lib" \
+		LIB="libapctl.o"
+	
+	# 编译ap目录
+	$(MAKE) -C $(PKG_BUILD_DIR)/ap \
+		CC="$(TARGET_CC)" \
+		CFLAGS="$(TARGET_CFLAGS) -I$(STAGING_DIR)/usr/include -I$(PKG_BUILD_DIR)/include -DCLIENT" \
+		LDFLAGS="$(TARGET_LDFLAGS) -L$(STAGING_DIR)/usr/lib -lsqlite3" \
+		LIBDIR="$(PKG_BUILD_DIR)/lib" \
+		LIB="libapctl.o"
+endef
 
-export CC LD AR INSTALL TARGET
+define Package/acctl/install
+	$(INSTALL_DIR) $(1)/usr/bin
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/ac/acser $(1)/usr/bin/
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/ap/apctl $(1)/usr/bin/
+	$(INSTALL_DIR) $(1)/etc/init.d
+	$(INSTALL_BIN) $(CURDIR)/files/acctl.init $(1)/etc/init.d/acctl
+	$(INSTALL_DIR) $(1)/etc/config
+	$(INSTALL_CONF) $(CURDIR)/files/acctl.config $(1)/etc/config/acctl
+	$(INSTALL_DIR) $(1)/etc/acctl
+endef
 
-INC = -I$(TOPDIR)/include
-CFLAGS = -Wall -Wno-unused-function -O0 $(INC)
-CFLAGS += -g -DDEBUG
-LDFLAGS = -lpthread
-# SQLite dependencies
-CFLAGS+=$(SQLITE_CFLAGS)
-LDFLAGS+=$(SQLITE_LIBS) -lsqlite3
-export CFLAGS LDFLAGS
-
-all:acser apcli test
-
-
-LIB = libapctl.o
-LIBDIR = $(TOPDIR)/lib
-export LIB LIBDIR
-
-ACDIR = $(TOPDIR)/ac
-acser: 
-	@$(MAKE) -C $(ACDIR)
-
-APDIR = $(TOPDIR)/ap
-apcli:
-	@$(MAKE) -C $(APDIR)
-
-TESTDIR = $(TOPDIR)/test
-test: FORCE
-	@$(MAKE) -C $(TESTDIR)
-
-tags: FORCE
-	@find  . -name "*.h" -o -name "*.c" -o -name "*.s" > cscope.files
-	@cscope -bkq -i cscope.files
-	@ctags -L cscope.files
-
-clean:
-	@rm -rf `find . -name "*.o"` $(ACDIR)/acser $(APDIR)/apctl
-	@rm -rf `find . -name "*.so"` 
-	@rm -rf $(TESTDIR)/dllser $(TESTDIR)/dllcli
-	@rm -rf cscope* tags
-FORCE:          
-	                
-PHONY += deps clean FORCE
-.PHONY: $(PHONY)
+$(eval $(call BuildPackage,acctl))

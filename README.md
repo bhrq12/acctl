@@ -1,69 +1,128 @@
-简介
-=======
+# OpenWrt AC控制器使用说明
 
-Openwrt ac 控制器(acctl)， 包含服务端和客户端两大块。支持以下特性:
+## 项目简介
 
-* 同一网段，二层发现，自动配置ip
-* 自动二层/三层发送控制信息
-* 二层主动探测网络中ap，可接管其他ac控制ap
-* 客户端主动链接，并保持长链接
+OpenWrt AC控制器(acctl)是一个用于管理和控制AP(Access Point)设备的网络控制器系统，包含服务端(AC)和客户端(AP)两大核心组件。使用轻量级的SQLite数据库，非常适合在OpenWrt设备上运行。
 
+## 功能特性
 
-目录
-=======
+- 同一网段，二层发现，自动配置IP
+- 自动二层/三层发送控制信息
+- 二层主动探测网络中AP，可接管其他AC控制AP
+- 客户端主动链接，并保持长链接
+- 基于CHAP的安全认证机制，防止重放攻击
+- 使用轻量级SQLite数据库，无需单独的数据库服务器
 
-ac: 服务器代码
-ap: 客户端代码
-lib: 共用代码
-include: 共用头文件
-scripts: 编译等辅助脚本
+## OpenWrt编译指南
 
+### 准备工作
 
-ac
-================
+1. **安装OpenWrt SDK**
+   - 下载适合目标设备的OpenWrt SDK
+   - 解压到本地目录
 
-ac 为多线程，包含以下线程:
+2. **安装依赖**
+   ```bash
+   ./scripts/feeds update -a
+   ./scripts/feeds install libpthread libsqlite3
+   ```
 
-* net_recv: 接收二层或者三层数据包
-* net_netlisten: 监听tcp链接
-* net_dllbrd: 二层广播
-* message_travel: 定时处理收到的报文
-* 主线程： 用于命令行查看系统状态
+### 编译步骤
 
-- net_dllbrd 线程广播探测报文, 报文中携带ac的地址和监听端口
-- ap接收到探测报文后，发起tcp链接
-- ac 将ap信息插入aphash
-- ap 定时汇报状态
-- ac 从数据库中提出配置，与状态比较，并发出命令
-- 当tcp链接断开时，认为ap掉线
-- 删除aphash记录
+1. **复制包目录**
+   - 将 `openwrt-package/acctl` 目录复制到 OpenWrt SDK 的 `package` 目录
 
-启动过程:
+2. **配置编译选项**
+   ```bash
+   make menuconfig
+   ```
+   - 在 `Network` 菜单中选择 `acctl`
 
-* 初始化ac控制器uuid
-* 初始化epoll
-* 初始化二层socket, 加入epoll
-* 启动net_recv线程，收包（此时只接收二层数据包）
-* 初始化三层tcp listen线程, 等待tcp 链接
-* 初始化二层广播，汇报服务器地址，端口，ac uuid
+3. **编译**
+   ```bash
+   make package/acctl/compile V=99
+   ```
 
-ap
-================
+4. **安装**
+   - 编译完成后，在 `bin/packages/` 目录找到生成的 `.ipk` 文件
+   - 使用 `opkg` 安装到 OpenWrt 设备
+   ```bash
+   opkg install acctl_1.0-1_*.ipk
+   ```
 
-ap 为多线程，包含以下线程:
+## 配置与使用
 
-* net_recv: 接收二层或者三层数据包
-* message_travel: 定时处理收到的报文
-* 主线程: 状态查询
+### 数据库
 
+系统使用SQLite数据库，数据库文件位于 `/etc/acctl/ac.db`，会在首次启动时自动创建。
 
-chap 二层保护
-=================
+### 配置文件
 
-编译时makefile会要求输入password， 客户端和服务端必须密码一致，用于报文确认。random 用于防止重放攻击。
+配置文件位于 `/etc/config/acctl`，主要配置项：
 
-1、发送broadcast报文， 生成broadcast `random0`
-2、ap接收到broadcast报文, 生成`random1`, 对`数据+ random0 + password`计算`md5sum1`, 发送ap reg 报文。
-3、ac收到ap reg报文，提取`md5sum1`并置原报文位置为0, 对`报文 + random0 + password`计算`md5sum2`, 如果md5sum1 与 md5sum2 不一致，则丢弃。ac 生成reg response 报文，生成`random2`, 对`数据 + random1 + password`计算`md5sum3`
-4、ap 收到reg response 报文，提取`md5sum3`并置原报文位置为0, 对`报文 + random1 + password`计算`md5sum3`, 如果md5sum3 与 md5sum4 不一致，则丢弃
+```config
+config acctl
+    option interface 'eth0'  # 网络接口
+    option port '8888'       # AC监听端口
+    option password 'your_password'  # CHAP密码
+```
 
+### 启动服务
+
+```bash
+# 启动AC服务
+/etc/init.d/acctl start
+
+# 设置开机自启
+/etc/init.d/acctl enable
+```
+
+### 运行AP客户端
+
+在AP设备上运行：
+
+```bash
+apctl -i eth0
+```
+
+## 网络拓扑
+
+```
+AC (OpenWrt设备) <---> AP1 (OpenWrt设备)
+               <---> AP2 (OpenWrt设备)
+               <---> AP3 (OpenWrt设备)
+```
+
+## 故障排查
+
+### 常见问题
+
+1. **AP无法发现AC**
+   - 检查网络连接是否正常
+   - 确保AC和AP使用相同的CHAP密码
+   - 检查网络接口配置是否正确
+
+2. **AC无法接收AP状态**
+   - 检查TCP连接是否正常
+   - 查看系统日志：`logread | grep acctl`
+
+3. **数据库问题**
+   - 确保数据库文件有正确的权限
+   - 检查磁盘空间是否充足
+
+## 注意事项
+
+1. **资源限制**：OpenWrt设备通常资源有限，建议在管理AP数量较多时选择性能较好的设备作为AC
+
+2. **网络安全**：确保CHAP密码足够复杂，定期更换
+
+3. **版本兼容性**：本项目适用于最新版本的OpenWrt系统
+
+4. **依赖项**：确保安装了所有必要的依赖包
+
+5. **SQLite优势**：相比MySQL，SQLite更轻量，无需单独服务器，非常适合嵌入式设备
+
+## 版本历史
+
+- v1.1: 使用SQLite替代MySQL，更适合OpenWrt环境
+- v1.0: 初始版本，支持基本的AP管理功能
