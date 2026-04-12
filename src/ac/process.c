@@ -167,13 +167,20 @@ static void __ap_status(struct ap_t *ap, struct msg_ap_status_t *msg, int len)
 	}
 
 	/* Update database with latest AP info */
+	/* Extract wifi_ssid from status payload (not the stale hash entry) */
+	char db_wifi_ssid[64] = {0};
+	strncpy(db_wifi_ssid, status->ssid0.ssid, sizeof(db_wifi_ssid) - 1);
+
+	/* Update hash entry fields for future use */
+	ap->online_users = (status->ssidnum > 0) ? status->ssidnum : 0;
+	strncpy(ap->wifi_ssid, db_wifi_ssid, sizeof(ap->wifi_ssid) - 1);
+
 	char json_buf[512];
 	snprintf(json_buf, sizeof(json_buf),
 		"{\"online_user_num\":%d,\"wifi_ssid\":\"%s\"}",
-		status->ssidnum > 0 ? status->ssidnum : 0,
-		status->ssid0.ssid);
+		ap->online_users, db_wifi_ssid);
 	sql_ap_upsert(ap->mac, ap->hostname, ap->wan_ip,
-		ap->wifi_ssid, ap->firmware, ap->online_users, json_buf);
+		db_wifi_ssid, ap->firmware, ap->online_users, json_buf);
 
 	/* Check for command result data appended after apstatus_t */
 	size_t extra_len = (size_t)len - sizeof(*msg) - sizeof(struct apstatus_t);
@@ -189,6 +196,9 @@ static void __ap_status(struct ap_t *ap, struct msg_ap_status_t *msg, int len)
 	fill_msg_header(&ack.header, MSG_AP_REPORT_ACK, &ac.acuuid[0],
 		chap_get_random());
 	ack.timestamp = (uint64_t)time(NULL);
+
+	/* Compute CHAP so AP can verify this ACK came from the real AC */
+	chap_fill_msg_md5(&ack.header, sizeof(ack), 0);
 
 	struct nettcp_t tcp;
 	tcp.sock = ap->sock;
@@ -276,7 +286,14 @@ static void __ap_reg(struct ap_hash_t *aphash,
 	struct sockaddr_in *alloc_addr = NULL;
 	struct _ip_t *ip = NULL;
 
-	/* Check if requested IP conflicts */
+	/* Always capture AP's original WAN IP first (in network byte order) */
+	char ap_orig_wanip_str[INET_ADDRSTRLEN] = {0};
+	if (msg->ipv4.sin_addr.s_addr != 0) {
+		inet_ntop(AF_INET, &msg->ipv4.sin_addr,
+			ap_orig_wanip_str, sizeof(ap_orig_wanip_str));
+	}
+
+	/* Check if requested IP conflicts with existing allocation */
 	if (msg->ipv4.sin_addr.s_addr != 0) {
 		if (res_ip_conflict(&msg->ipv4, msg->header.mac) == 0) {
 			/* No conflict — AP's requested IP is fine */
@@ -289,7 +306,7 @@ static void __ap_reg(struct ap_hash_t *aphash,
 	}
 
 	if (!alloc_addr) {
-		ip = res_ip_alloc(alloc_addr, msg->header.mac);
+		ip = res_ip_alloc(NULL, msg->header.mac);  /* NULL = auto-allocate */
 		if (!ip) {
 			sys_err("IP pool exhausted, cannot register %s\n",
 				mac_str);

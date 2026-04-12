@@ -103,6 +103,9 @@ struct ap_hash_t *hash_ap_add(char *mac)
 	aphash->ap.last_seen = time(NULL);
 	pthread_mutex_init(&aphash->msg_lock, NULL);
 	INIT_HLIST_NODE(&aphash->node);
+	/* Initialize message queue so ac_message_insert works correctly */
+	aphash->msg_head = NULL;
+	aphash->msg_tail = &aphash->msg_head;
 
 	unsigned int key = hash_mac_to_key((const char *)mac);
 

@@ -361,11 +361,55 @@ int sql_ap_upsert(const char *mac, const char *hostname,
 	const char *wan_ip, const char *wifi_ssid,
 	const char *firmware, int online_users, const char *extra_json)
 {
-	char sql_stmt[1024];
+	char sql_stmt[2048];
 	char timestamp[64];
 	time_t now = time(NULL);
 	struct tm *tm_info = localtime(&now);
 	strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", tm_info);
+
+	/*
+	 * extra_json may contain runtime status from AP status reports:
+	 *   {"online_user_num":N,"wifi_ssid":"XXXX"}
+	 * Parse it and use those values instead of the stale in-memory fields.
+	 */
+	int db_online_users = online_users;
+	char db_wifi_ssid[64] = {0};
+
+	if (extra_json && extra_json[0] != '\0') {
+		/* Parse runtime status from extra_json */
+		char tmp[256];
+		snprintf(tmp, sizeof(tmp), "%s", extra_json);
+		char *p = tmp;
+		while (*p) {
+			while (*p == ' ' || *p == '\t') p++;
+			if (strncmp(p, "\"online_user_num\":", 17) == 0) {
+				p += 17;
+				while (*p == ' ' || *p == ':' || *p == ' ') p++;
+				db_online_users = atoi(p);
+				while (*p && *p != ',' && *p != '}') p++;
+			} else if (strncmp(p, "\"wifi_ssid\":", 12) == 0) {
+				p += 12;
+				while (*p == ' ' || *p == ':' || *p == '"' || *p == ' ') p++;
+				char *start = p;
+				while (*p && *p != '"') p++;
+				int len = (int)(p - start);
+				if (len > (int)sizeof(db_wifi_ssid) - 1)
+					len = (int)sizeof(db_wifi_ssid) - 1;
+				memcpy(db_wifi_ssid, start, len);
+				db_wifi_ssid[len] = '\0';
+				while (*p && *p != ',' && *p != '}') p++;
+			} else {
+				while (*p && *p != ',' && *p != '}') p++;
+			}
+			if (*p == ',') p++;
+		}
+	}
+
+	/* If wifi_ssid was passed directly (not from extra_json), use it */
+	if (db_wifi_ssid[0] == '\0' && wifi_ssid && wifi_ssid[0] != '\0') {
+		strncpy(db_wifi_ssid, wifi_ssid, sizeof(db_wifi_ssid) - 1);
+		db_wifi_ssid[sizeof(db_wifi_ssid) - 1] = '\0';
+	}
 
 	snprintf(sql_stmt, sizeof(sql_stmt),
 		"INSERT INTO node (mac, hostname, wan_ip, wifi_ssid, firmware, "
@@ -376,14 +420,21 @@ int sql_ap_upsert(const char *mac, const char *hostname,
 		"  wan_ip=COALESCE(excluded.wan_ip,wan_ip),"
 		"  wifi_ssid=COALESCE(excluded.wifi_ssid,wifi_ssid),"
 		"  firmware=COALESCE(excluded.firmware,firmware),"
-		"  online_user_num=COALESCE(excluded.online_user_num,online_user_num),"
+		"  online_user_num=%d,"
 		"  last_seen=%lu,"
 		"  device_down=0,"
 		"  time='%s'",
-		mac, hostname ? hostname : "", wan_ip ? wan_ip : "",
-		wifi_ssid ? wifi_ssid : "", firmware ? firmware : "",
-		online_users, (unsigned long)now, timestamp,
-		(unsigned long)now, timestamp);
+		mac,
+		hostname ? hostname : "",
+		wan_ip ? wan_ip : "",
+		db_wifi_ssid[0] ? db_wifi_ssid : (wifi_ssid ? wifi_ssid : ""),
+		firmware ? firmware : "",
+		db_online_users,
+		(unsigned long)now,
+		timestamp,
+		db_online_users,
+		(unsigned long)now,
+		timestamp);
 
 	return _sql_exec(sql_stmt);
 }

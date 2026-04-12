@@ -53,30 +53,39 @@ static int read_proc(const char *path, char *buf, size_t buflen)
  * Get WiFi interface name from UCI
  * ======================================================================== */
 
+/* ========================================================================
+ * Get WiFi interface name (radio device name, e.g. "radio0")
+ * ======================================================================== */
+
 static void get_wifi_iface(char *buf, size_t buflen)
 {
-	char line[128];
-	FILE *fp = popen("uci get wireless.@wifi-iface[0].device 2>/dev/null || echo wifi0", "r");
+	FILE *fp = popen(
+		"uci get wireless.@wifi-iface[0].device 2>/dev/null | tr -d '\\n\\r' || echo wifi0",
+		"r");
 	if (!fp) {
 		strncpy(buf, "wifi0", buflen - 1);
+		buf[buflen - 1] = '\0';
 		return;
 	}
 	if (fgets(buf, (int)buflen, fp)) {
 		size_t len = strlen(buf);
 		while (len > 0 && (buf[len-1] == '\n' || buf[len-1] == '\r'))
 			buf[--len] = '\0';
+		if (buf[0] == '\0')
+			strncpy(buf, "wifi0", buflen - 1);
 	}
 	pclose(fp);
 }
 
 /* ========================================================================
- * Get current SSID
+ * Get current SSID (from the first wifi-iface section)
  * ======================================================================== */
 
 static void get_ssid(char *ssid_buf, size_t ssid_len)
 {
-	char buf[128];
-	FILE *fp = popen("uci get wireless.@wifi-iface[0].ssid 2>/dev/null || echo ''", "r");
+	FILE *fp = popen(
+		"uci get wireless.@wifi-iface[0].ssid 2>/dev/null | tr -d '\\n\\r' || echo ''",
+		"r");
 	if (!fp) {
 		ssid_buf[0] = '\0';
 		return;
@@ -92,21 +101,6 @@ static void get_ssid(char *ssid_buf, size_t ssid_len)
 /* ========================================================================
  * Get number of associated clients
  * ======================================================================== */
-
-static int get_associated_users(void)
-{
-	char buf[256];
-	/* Count associations via iw */
-	FILE *fp = popen("iw dev 2>/dev/null | grep -c 'Connected to' || echo 0", "r");
-	if (!fp)
-		return 0;
-	if (fgets(buf, sizeof(buf), fp)) {
-		pclose(fp);
-		return atoi(buf);
-	}
-	pclose(fp);
-	return 0;
-}
 
 /* ========================================================================
  * Get uptime
@@ -190,21 +184,44 @@ struct apstatus_t *get_apstatus(void)
 
 	memset(&cached_status, 0, sizeof(cached_status));
 
-	/* WiFi status */
-	get_wifi_iface(cached_status.ssid0.ssid, sizeof(cached_status.ssid0.ssid));
+	/* Get SSID first */
 	get_ssid(cached_status.ssid0.ssid, sizeof(cached_status.ssid0.ssid));
 
-	/* Signal strength — get from iw */
-	char sig_buf[32];
-	FILE *fp = popen("iw dev 2>/dev/null | grep 'signal:' | awk '{print $2}' | head -1", "r");
-	if (fp) {
-		if (fgets(sig_buf, sizeof(sig_buf), fp))
-			cached_status.ssid0.power = atoi(sig_buf);
-		pclose(fp);
-	}
+	/* Get radio device name (e.g. "radio0") */
+	char iface[32];
+	get_wifi_iface(iface, sizeof(iface));
 
-	/* Number of associated users */
-	cached_status.ssidnum = get_associated_users();
+	/* Signal strength from iw — use the correct interface name */
+	if (iface[0] != '\0') {
+		char cmd[128];
+		char sig_buf[32];
+		snprintf(cmd, sizeof(cmd),
+			"iw dev %s link 2>/dev/null | grep 'signal:' | awk '{print $2}'",
+			iface);
+		FILE *fp = popen(cmd, "r");
+		if (fp) {
+			if (fgets(sig_buf, sizeof(sig_buf), fp)) {
+				cached_status.ssid0.power = atoi(sig_buf);
+			}
+			pclose(fp);
+		}
+
+		/* Associated users: count STAs connected to this interface */
+		char cmd2[128];
+		char sta_buf[32];
+		snprintf(cmd2, sizeof(cmd2),
+			"iw dev %s station dump 2>/dev/null | grep -c 'Station' || echo 0",
+			iface);
+		fp = popen(cmd2, "r");
+		if (fp) {
+			if (fgets(sta_buf, sizeof(sta_buf), fp)) {
+				cached_status.ssidnum = atoi(sta_buf);
+			}
+			pclose(fp);
+		} else {
+			cached_status.ssidnum = 0;
+		}
+	}
 
 	/* Fallback SSID if none found */
 	if (cached_status.ssid0.ssid[0] == '\0') {

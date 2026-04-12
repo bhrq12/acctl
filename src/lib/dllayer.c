@@ -290,7 +290,7 @@ int dll_brdcast(char *data, int size)
 	return 0;
 }
 
-int dll_rcv(char *data, int size)
+int dll_rcv(char *data, int size, char *src_mac_out)
 {
 	assert(size <= DLL_PKT_DATALEN && data != NULL);
 
@@ -299,10 +299,10 @@ int dll_rcv(char *data, int size)
 	int ret;
 	LOCK_RCV();
 	__build_rcvll(0);
-	ret = recvfrom(dllrcv.rcvsock, dllrcv.rcvpkt, 
-		DLL_PKT_MAXLEN, 0, 
+	ret = recvfrom(dllrcv.rcvsock, dllrcv.rcvpkt,
+		DLL_PKT_MAXLEN, 0,
 		(struct sockaddr *)&dllrcv.ll, &dllrcv.recvlen);
-	if(ret < sizeof(struct ethhdr)) {
+	if(ret < (int)sizeof(struct ethhdr)) {
 		sys_warn("recv pkt failed: %s\n", strerror(errno));
 		UNLOCK_RCV();
 		return -1;
@@ -311,12 +311,17 @@ int dll_rcv(char *data, int size)
 	struct ethhdr *hdr = (struct ethhdr *)dllrcv.rcvpkt;
 	if(ntohs(hdr->h_proto) != ETH_INNO) {
 		sys_warn("Reciv error dllayer packet\n");
+		UNLOCK_RCV();
 		return -1;
 	}
 
+	/* Return sender's MAC for reply routing */
+	if (src_mac_out)
+		memcpy(src_mac_out, hdr->h_source, ETH_ALEN);
+
 	memcpy(data, dllrcv.rcvpkt + sizeof(struct ethhdr), size);
 	UNLOCK_RCV();
-	return (ret > size) ? size: ret;
+	return (ret > size) ? size : ret;
 }
 
 void dll_init(char *nic, int *rcvsock, int *sdrsock, int *brdsock)

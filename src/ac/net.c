@@ -55,28 +55,27 @@ static void *__net_dllrecv(void *arg)
 		return NULL;
 	}
 
-	int rcvlen = dll_rcv(msg->data, DLL_PKT_DATALEN);
+	char src_mac[ETH_ALEN];
+	int rcvlen = dll_rcv(msg->data, DLL_PKT_DATALEN, src_mac);
 	if (rcvlen < (int)sizeof(struct ethhdr)) {
-		free(msg);
+		free(msg);  /* FIX: was leaking msg on short read */
 		return NULL;
 	}
 
 	msg->len = rcvlen;
 
-	struct msg_head_t *head = (struct msg_head_t *)msg->data;
-	char *mac = head->mac;
-
-	struct ap_hash_t *aphash = hash_ap(mac);
+	/* Use Ethernet-layer source MAC for routing (not msg header MAC) */
+	struct ap_hash_t *aphash = hash_ap(src_mac);
 	if (!aphash) {
 		/* Unknown AP — create new entry */
-		aphash = hash_ap_add(mac);
+		aphash = hash_ap_add(src_mac);
 		if (!aphash) {
 			free(msg);
 			return NULL;
 		}
 	}
 
-	memcpy(aphash->ap.mac, mac, ETH_ALEN);
+	memcpy(aphash->ap.mac, src_mac, ETH_ALEN);
 	msg->proto = MSG_PROTO_ETH;
 	ac_message_insert(aphash, msg);
 
