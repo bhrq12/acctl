@@ -24,12 +24,30 @@ define Build/Prepare
 endef
 
 define Build/Compile
-	$(MAKE) -C $(PKG_BUILD_DIR) \
+	# 直接编译lib目录
+	cd $(PKG_BUILD_DIR)/lib && \
+	$(MAKE) \
 		CC="$(TARGET_CC)" \
-		CFLAGS="$(TARGET_CFLAGS) -I$(STAGING_DIR)/usr/include" \
-		LDFLAGS="$(TARGET_LDFLAGS) -L$(STAGING_DIR)/usr/lib" \
-		SQLITE_CFLAGS="-I$(STAGING_DIR)/usr/include" \
-		SQLITE_LIBS="-L$(STAGING_DIR)/usr/lib -lsqlite3"
+		CFLAGS="$(TARGET_CFLAGS) -I$(STAGING_DIR)/usr/include -I$(PKG_BUILD_DIR)/include" \
+		LDFLAGS="$(TARGET_LDFLAGS) -L$(STAGING_DIR)/usr/lib"
+	
+	# 编译ac目录
+	cd $(PKG_BUILD_DIR)/ac && \
+	$(MAKE) \
+		CC="$(TARGET_CC)" \
+		CFLAGS="$(TARGET_CFLAGS) -I$(STAGING_DIR)/usr/include -I$(PKG_BUILD_DIR)/include -DSERVER" \
+		LDFLAGS="$(TARGET_LDFLAGS) -L$(STAGING_DIR)/usr/lib -lsqlite3" \
+		LIBDIR="$(PKG_BUILD_DIR)/lib" \
+		LIB="libapctl.o"
+	
+	# 编译ap目录
+	cd $(PKG_BUILD_DIR)/ap && \
+	$(MAKE) \
+		CC="$(TARGET_CC)" \
+		CFLAGS="$(TARGET_CFLAGS) -I$(STAGING_DIR)/usr/include -I$(PKG_BUILD_DIR)/include -DCLIENT" \
+		LDFLAGS="$(TARGET_LDFLAGS) -L$(STAGING_DIR)/usr/lib -lsqlite3" \
+		LIBDIR="$(PKG_BUILD_DIR)/lib" \
+		LIB="libapctl.o"
 endef
 
 define Package/acctl/install
