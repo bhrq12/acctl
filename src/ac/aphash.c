@@ -272,7 +272,7 @@ void hash_ap_dump(void)
 				i,
 				aphash->ap.mac[0], aphash->ap.mac[1],
 				aphash->ap.mac[2], aphash->ap.mac[3],
-				aphash->ap.mac[4], apash->ap.mac[5],
+				aphash->ap.mac[4], aphash->ap.mac[5],
 				aphash->ap.sock,
 				aphash->ap.status,
 				(long)aphash->ap.last_seen);

@@ -411,55 +411,140 @@ int sql_ap_upsert(const char *mac, const char *hostname,
 		db_wifi_ssid[sizeof(db_wifi_ssid) - 1] = '\0';
 	}
 
-	snprintf(sql_stmt, sizeof(sql_stmt),
+	/* Use prepared statement to prevent SQL injection */
+	sqlite3_stmt *stmt;
+	const char *upsert_sql =
 		"INSERT INTO node (mac, hostname, wan_ip, wifi_ssid, firmware, "
 		"online_user_num, last_seen, time) "
-		"VALUES ('%s', '%s', '%s', '%s', '%s', %d, %lu, '%s') "
+		"VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8) "
 		"ON CONFLICT(mac) DO UPDATE SET "
 		"  hostname=COALESCE(excluded.hostname,hostname),"
 		"  wan_ip=COALESCE(excluded.wan_ip,wan_ip),"
 		"  wifi_ssid=COALESCE(excluded.wifi_ssid,wifi_ssid),"
 		"  firmware=COALESCE(excluded.firmware,firmware),"
-		"  online_user_num=%d,"
-		"  last_seen=%lu,"
+		"  online_user_num=?6,"
+		"  last_seen=?7,"
 		"  device_down=0,"
-		"  time='%s'",
-		mac,
-		hostname ? hostname : "",
-		wan_ip ? wan_ip : "",
-		db_wifi_ssid[0] ? db_wifi_ssid : (wifi_ssid ? wifi_ssid : ""),
-		firmware ? firmware : "",
-		db_online_users,
-		(unsigned long)now,
-		timestamp,
-		db_online_users,
-		(unsigned long)now,
-		timestamp);
+		"  time=?8";
 
-	return _sql_exec(sql_stmt);
+	int rc = sqlite3_prepare_v2(sql, upsert_sql, -1, &stmt, NULL);
+	if (rc != SQLITE_OK) {
+		pr_sqlerr();
+		return -1;
+	}
+
+	sqlite3_bind_text(stmt, 1, mac, -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt, 2, hostname ? hostname : "", -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt, 3, wan_ip ? wan_ip : "", -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt, 4,
+		db_wifi_ssid[0] ? db_wifi_ssid : (wifi_ssid ? wifi_ssid : ""),
+		-1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt, 5, firmware ? firmware : "", -1, SQLITE_STATIC);
+	sqlite3_bind_int(stmt, 6, db_online_users);
+	sqlite3_bind_int64(stmt, 7, (sqlite3_int64)now);
+	sqlite3_bind_text(stmt, 8, timestamp, -1, SQLITE_STATIC);
+
+	rc = sqlite3_step(stmt);
+	sqlite3_finalize(stmt);
+
+	if (rc != SQLITE_DONE) {
+		sys_err("sql_ap_upsert failed: %s\n", sqlite3_errmsg(sql));
+		return -1;
+	}
+	return 0;
 }
 
 int sql_ap_update_field(const char *mac, const char *field, const char *value)
 {
-	char sql_stmt[512];
+	/*
+	 * Validate field name against allowed columns to prevent injection.
+	 * The field parameter comes from internal code, but defense-in-depth
+	 * demands we verify it matches a real column name.
+	 */
+	static const char *allowed_fields[] = {
+		"hostname", "wan_ip", "wan_mac", "wan_gateway",
+		"wifi_iface", "wifi_ip", "wifi_mac", "wifi_ssid",
+		"wifi_encryption", "wifi_key", "wifi_channel_mode",
+		"wifi_channel", "wifi_signal", "firmware",
+		"firmware_revision", "online_user_num", "group_id",
+		"tags", "device_down", "last_seen",
+		NULL
+	};
+
+	int valid = 0;
+	for (int i = 0; allowed_fields[i]; i++) {
+		if (strcmp(field, allowed_fields[i]) == 0) {
+			valid = 1;
+			break;
+		}
+	}
+	if (!valid) {
+		sys_err("sql_ap_update_field: invalid field '%s'\n", field);
+		return -1;
+	}
+
+	/* Build statement with validated field name; bind value and mac */
+	char sql_stmt[256];
 	snprintf(sql_stmt, sizeof(sql_stmt),
-		"UPDATE node SET %s='%s' WHERE mac='%s'",
-		field, value, mac);
-	return _sql_exec(sql_stmt);
+		"UPDATE node SET %s=?1 WHERE mac=?2", field);
+
+	sqlite3_stmt *stmt;
+	int rc = sqlite3_prepare_v2(sql, sql_stmt, -1, &stmt, NULL);
+	if (rc != SQLITE_OK) {
+		pr_sqlerr();
+		return -1;
+	}
+
+	sqlite3_bind_text(stmt, 1, value ? value : "", -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt, 2, mac, -1, SQLITE_STATIC);
+
+	rc = sqlite3_step(stmt);
+	sqlite3_finalize(stmt);
+
+	if (rc != SQLITE_DONE) {
+		sys_err("sql_ap_update_field failed: %s\n", sqlite3_errmsg(sql));
+		return -1;
+	}
+	return 0;
 }
 
 int sql_ap_get_field(const char *mac, const char *field, char *out, int outlen)
 {
+	/* Validate field name (same whitelist as sql_ap_update_field) */
+	static const char *allowed_fields[] = {
+		"hostname", "wan_ip", "wan_mac", "wan_gateway",
+		"wifi_iface", "wifi_ip", "wifi_mac", "wifi_ssid",
+		"wifi_encryption", "wifi_key", "wifi_channel_mode",
+		"wifi_channel", "wifi_signal", "firmware",
+		"firmware_revision", "online_user_num", "group_id",
+		"tags", "device_down", "last_seen",
+		NULL
+	};
+
+	int valid = 0;
+	for (int i = 0; allowed_fields[i]; i++) {
+		if (strcmp(field, allowed_fields[i]) == 0) {
+			valid = 1;
+			break;
+		}
+	}
+	if (!valid) {
+		sys_err("sql_ap_get_field: invalid field '%s'\n", field);
+		return -1;
+	}
+
 	char sql_stmt[256];
 	sqlite3_stmt *stmt;
 	int rc;
 
 	snprintf(sql_stmt, sizeof(sql_stmt),
-		"SELECT %s FROM node WHERE mac='%s'", field, mac);
+		"SELECT %s FROM node WHERE mac=?1", field);
 
 	rc = sqlite3_prepare_v2(sql, sql_stmt, -1, &stmt, NULL);
 	if (rc != SQLITE_OK)
 		return -1;
+
+	sqlite3_bind_text(stmt, 1, mac, -1, SQLITE_STATIC);
 
 	rc = sqlite3_step(stmt);
 	if (rc == SQLITE_ROW) {
@@ -477,12 +562,27 @@ int sql_ap_get_field(const char *mac, const char *field, char *out, int outlen)
 
 int sql_ap_set_offline(const char *mac)
 {
-	char sql_stmt[256];
-	snprintf(sql_stmt, sizeof(sql_stmt),
-		"UPDATE node SET device_down=1, last_seen=%lu "
-		"WHERE mac='%s'",
-		(unsigned long)time(NULL), mac);
-	return _sql_exec(sql_stmt);
+	sqlite3_stmt *stmt;
+	const char *sql_stmt =
+		"UPDATE node SET device_down=1, last_seen=?1 WHERE mac=?2";
+
+	int rc = sqlite3_prepare_v2(sql, sql_stmt, -1, &stmt, NULL);
+	if (rc != SQLITE_OK) {
+		pr_sqlerr();
+		return -1;
+	}
+
+	sqlite3_bind_int64(stmt, 1, (sqlite3_int64)time(NULL));
+	sqlite3_bind_text(stmt, 2, mac, -1, SQLITE_STATIC);
+
+	rc = sqlite3_step(stmt);
+	sqlite3_finalize(stmt);
+
+	if (rc != SQLITE_DONE) {
+		sys_err("sql_ap_set_offline failed: %s\n", sqlite3_errmsg(sql));
+		return -1;
+	}
+	return 0;
 }
 
 /* ========================================================================
@@ -491,11 +591,27 @@ int sql_ap_set_offline(const char *mac)
 
 int sql_group_create(const char *name, const char *description)
 {
-	char sql_stmt[512];
-	snprintf(sql_stmt, sizeof(sql_stmt),
-		"INSERT INTO ap_group (name, description) VALUES ('%s', '%s')",
-		name, description ? description : "");
-	return _sql_exec(sql_stmt);
+	sqlite3_stmt *stmt;
+	const char *sql_stmt =
+		"INSERT INTO ap_group (name, description) VALUES (?1, ?2)";
+
+	int rc = sqlite3_prepare_v2(sql, sql_stmt, -1, &stmt, NULL);
+	if (rc != SQLITE_OK) {
+		pr_sqlerr();
+		return -1;
+	}
+
+	sqlite3_bind_text(stmt, 1, name, -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt, 2, description ? description : "", -1, SQLITE_STATIC);
+
+	rc = sqlite3_step(stmt);
+	sqlite3_finalize(stmt);
+
+	if (rc != SQLITE_DONE) {
+		sys_err("sql_group_create failed: %s\n", sqlite3_errmsg(sql));
+		return -1;
+	}
+	return 0;
 }
 
 int sql_group_delete(int group_id)
@@ -550,20 +666,50 @@ int sql_group_list(char *json_buf, int buflen)
 
 int sql_group_add_ap(const char *mac, int group_id)
 {
-	char sql_stmt[256];
-	snprintf(sql_stmt, sizeof(sql_stmt),
-		"UPDATE node SET group_id=%d WHERE mac='%s'",
-		group_id, mac);
-	return _sql_exec(sql_stmt);
+	sqlite3_stmt *stmt;
+	const char *sql_stmt = "UPDATE node SET group_id=?1 WHERE mac=?2";
+
+	int rc = sqlite3_prepare_v2(sql, sql_stmt, -1, &stmt, NULL);
+	if (rc != SQLITE_OK) {
+		pr_sqlerr();
+		return -1;
+	}
+
+	sqlite3_bind_int(stmt, 1, group_id);
+	sqlite3_bind_text(stmt, 2, mac, -1, SQLITE_STATIC);
+
+	rc = sqlite3_step(stmt);
+	sqlite3_finalize(stmt);
+
+	if (rc != SQLITE_DONE) {
+		sys_err("sql_group_add_ap failed: %s\n", sqlite3_errmsg(sql));
+		return -1;
+	}
+	return 0;
 }
 
 int sql_group_remove_ap(const char *mac, int group_id)
 {
 	(void)group_id;
-	char sql_stmt[256];
-	snprintf(sql_stmt, sizeof(sql_stmt),
-		"UPDATE node SET group_id=0 WHERE mac='%s'", mac);
-	return _sql_exec(sql_stmt);
+	sqlite3_stmt *stmt;
+	const char *sql_stmt = "UPDATE node SET group_id=0 WHERE mac=?1";
+
+	int rc = sqlite3_prepare_v2(sql, sql_stmt, -1, &stmt, NULL);
+	if (rc != SQLITE_OK) {
+		pr_sqlerr();
+		return -1;
+	}
+
+	sqlite3_bind_text(stmt, 1, mac, -1, SQLITE_STATIC);
+
+	rc = sqlite3_step(stmt);
+	sqlite3_finalize(stmt);
+
+	if (rc != SQLITE_DONE) {
+		sys_err("sql_group_remove_ap failed: %s\n", sqlite3_errmsg(sql));
+		return -1;
+	}
+	return 0;
 }
 
 /* ========================================================================
@@ -573,31 +719,62 @@ int sql_group_remove_ap(const char *mac, int group_id)
 int sql_alarm_insert(int level, const char *ap_mac, const char *message,
 	const char *raw_data)
 {
-	char sql_stmt[1024];
-	snprintf(sql_stmt, sizeof(sql_stmt),
+	sqlite3_stmt *stmt;
+	const char *sql_stmt =
 		"INSERT INTO alarm_event (ap_mac, level, message, raw_data) "
-		"VALUES ('%s', %d, '%s', '%s')",
-		ap_mac ? ap_mac : "unknown",
-		level,
-		message ? message : "",
-		raw_data ? raw_data : "");
-	return _sql_exec(sql_stmt);
+		"VALUES (?1, ?2, ?3, ?4)";
+
+	int rc = sqlite3_prepare_v2(sql, sql_stmt, -1, &stmt, NULL);
+	if (rc != SQLITE_OK) {
+		pr_sqlerr();
+		return -1;
+	}
+
+	sqlite3_bind_text(stmt, 1, ap_mac ? ap_mac : "unknown", -1, SQLITE_STATIC);
+	sqlite3_bind_int(stmt, 2, level);
+	sqlite3_bind_text(stmt, 3, message ? message : "", -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt, 4, raw_data ? raw_data : "", -1, SQLITE_STATIC);
+
+	rc = sqlite3_step(stmt);
+	sqlite3_finalize(stmt);
+
+	if (rc != SQLITE_DONE) {
+		sys_err("sql_alarm_insert failed: %s\n", sqlite3_errmsg(sql));
+		return -1;
+	}
+	return 0;
 }
 
 int sql_alarm_ack(int alarm_id, const char *acked_by)
 {
-	char sql_stmt[256];
+	sqlite3_stmt *stmt;
 	char timestamp[64];
 	time_t now = time(NULL);
 	struct tm *tm_info = localtime(&now);
 	strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", tm_info);
 
-	snprintf(sql_stmt, sizeof(sql_stmt),
+	const char *sql_stmt =
 		"UPDATE alarm_event SET acknowledged=1,"
-		"acknowledged_by='%s', acknowledged_at='%s' "
-		"WHERE id=%d",
-		acked_by ? acked_by : "system", timestamp, alarm_id);
-	return _sql_exec(sql_stmt);
+		"acknowledged_by=?1, acknowledged_at=?2 WHERE id=?3";
+
+	int rc = sqlite3_prepare_v2(sql, sql_stmt, -1, &stmt, NULL);
+	if (rc != SQLITE_OK) {
+		pr_sqlerr();
+		return -1;
+	}
+
+	sqlite3_bind_text(stmt, 1, acked_by ? acked_by : "system", -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt, 2, timestamp, -1, SQLITE_STATIC);
+	sqlite3_bind_int(stmt, 3, alarm_id);
+
+	rc = sqlite3_step(stmt);
+	sqlite3_finalize(stmt);
+
+	if (rc != SQLITE_DONE) {
+		sys_err("sql_alarm_ack failed: %s\n", sqlite3_errmsg(sql));
+		return -1;
+	}
+	return 0;
 }
 
 int sql_alarm_list(char *json_buf, int buflen, int limit)
@@ -672,13 +849,30 @@ int sql_alarm_count_by_level(void)
 int sql_firmware_insert(const char *version, const char *filename,
 	uint32_t file_size, const char *sha256)
 {
-	char sql_stmt[1024];
-	snprintf(sql_stmt, sizeof(sql_stmt),
+	sqlite3_stmt *stmt;
+	const char *sql_stmt =
 		"INSERT INTO firmware (version, filename, file_size, sha256) "
-		"VALUES ('%s', '%s', %u, '%s')",
-		version, filename ? filename : "", file_size,
-		sha256 ? sha256 : "");
-	return _sql_exec(sql_stmt);
+		"VALUES (?1, ?2, ?3, ?4)";
+
+	int rc = sqlite3_prepare_v2(sql, sql_stmt, -1, &stmt, NULL);
+	if (rc != SQLITE_OK) {
+		pr_sqlerr();
+		return -1;
+	}
+
+	sqlite3_bind_text(stmt, 1, version, -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt, 2, filename ? filename : "", -1, SQLITE_STATIC);
+	sqlite3_bind_int(stmt, 3, (int)file_size);
+	sqlite3_bind_text(stmt, 4, sha256 ? sha256 : "", -1, SQLITE_STATIC);
+
+	rc = sqlite3_step(stmt);
+	sqlite3_finalize(stmt);
+
+	if (rc != SQLITE_DONE) {
+		sys_err("sql_firmware_insert failed: %s\n", sqlite3_errmsg(sql));
+		return -1;
+	}
+	return 0;
 }
 
 int sql_firmware_list(char *json_buf, int buflen)
@@ -749,31 +943,62 @@ int sql_firmware_getlatest(char *version_out, int version_len)
 
 int sql_upgrade_start(const char *ap_mac, const char *from_ver, const char *to_ver)
 {
-	char sql_stmt[512];
-	snprintf(sql_stmt, sizeof(sql_stmt),
+	sqlite3_stmt *stmt;
+	const char *sql_stmt =
 		"INSERT INTO upgrade_log (ap_mac, from_version, to_version, status) "
-		"VALUES ('%s', '%s', '%s', 'pending')",
-		ap_mac, from_ver ? from_ver : "", to_ver ? to_ver : "");
-	return _sql_exec(sql_stmt);
+		"VALUES (?1, ?2, ?3, 'pending')";
+
+	int rc = sqlite3_prepare_v2(sql, sql_stmt, -1, &stmt, NULL);
+	if (rc != SQLITE_OK) {
+		pr_sqlerr();
+		return -1;
+	}
+
+	sqlite3_bind_text(stmt, 1, ap_mac, -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt, 2, from_ver ? from_ver : "", -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt, 3, to_ver ? to_ver : "", -1, SQLITE_STATIC);
+
+	rc = sqlite3_step(stmt);
+	sqlite3_finalize(stmt);
+
+	if (rc != SQLITE_DONE) {
+		sys_err("sql_upgrade_start failed: %s\n", sqlite3_errmsg(sql));
+		return -1;
+	}
+	return 0;
 }
 
 int sql_upgrade_finish(const char *ap_mac, const char *status, const char *error_msg)
 {
-	char sql_stmt[512];
+	sqlite3_stmt *stmt;
 	char timestamp[64];
 	time_t now = time(NULL);
 	struct tm *tm_info = localtime(&now);
 	strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", tm_info);
 
-	snprintf(sql_stmt, sizeof(sql_stmt),
-		"UPDATE upgrade_log SET status='%s',finished_at='%s',"
-		"error_message='%s' "
-		"WHERE ap_mac='%s' AND status='pending'",
-		status ? status : "unknown",
-		timestamp,
-		error_msg ? error_msg : "",
-		ap_mac);
-	return _sql_exec(sql_stmt);
+	const char *sql_stmt =
+		"UPDATE upgrade_log SET status=?1,finished_at=?2,"
+		"error_message=?3 WHERE ap_mac=?4 AND status='pending'";
+
+	int rc = sqlite3_prepare_v2(sql, sql_stmt, -1, &stmt, NULL);
+	if (rc != SQLITE_OK) {
+		pr_sqlerr();
+		return -1;
+	}
+
+	sqlite3_bind_text(stmt, 1, status ? status : "unknown", -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt, 2, timestamp, -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt, 3, error_msg ? error_msg : "", -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt, 4, ap_mac, -1, SQLITE_STATIC);
+
+	rc = sqlite3_step(stmt);
+	sqlite3_finalize(stmt);
+
+	if (rc != SQLITE_DONE) {
+		sys_err("sql_upgrade_finish failed: %s\n", sqlite3_errmsg(sql));
+		return -1;
+	}
+	return 0;
 }
 
 int sql_upgrade_progress(const char *ap_mac, int *status_out,
@@ -783,7 +1008,7 @@ int sql_upgrade_progress(const char *ap_mac, int *status_out,
 	sqlite3_stmt *stmt;
 	int rc = sqlite3_prepare_v2(sql,
 		"SELECT status,from_version,to_version,error_message "
-		"FROM upgrade_log WHERE ap_mac='?' ORDER BY id DESC LIMIT 1",
+		"FROM upgrade_log WHERE ap_mac=?1 ORDER BY id DESC LIMIT 1",
 		-1, &stmt, NULL);
 	if (rc != SQLITE_OK)
 		return -1;
@@ -819,17 +1044,32 @@ int sql_audit_log(const char *user, const char *action,
 	const char *resource_type, const char *resource_id,
 	const char *old_value, const char *new_value, const char *ip_addr)
 {
-	char sql_stmt[2048];
-	snprintf(sql_stmt, sizeof(sql_stmt),
+	sqlite3_stmt *stmt;
+	const char *sql_stmt =
 		"INSERT INTO audit_log (user, action, resource_type, "
 		"resource_id, old_value, new_value, ip_address) "
-		"VALUES ('%s', '%s', '%s', '%s', '%s', '%s', '%s')",
-		user ? user : "system",
-		action ? action : "",
-		resource_type ? resource_type : "",
-		resource_id ? resource_id : "",
-		old_value ? old_value : "",
-		new_value ? new_value : "",
-		ip_addr ? ip_addr : "");
-	return _sql_exec(sql_stmt);
+		"VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)";
+
+	int rc = sqlite3_prepare_v2(sql, sql_stmt, -1, &stmt, NULL);
+	if (rc != SQLITE_OK) {
+		pr_sqlerr();
+		return -1;
+	}
+
+	sqlite3_bind_text(stmt, 1, user ? user : "system", -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt, 2, action ? action : "", -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt, 3, resource_type ? resource_type : "", -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt, 4, resource_id ? resource_id : "", -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt, 5, old_value ? old_value : "", -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt, 6, new_value ? new_value : "", -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt, 7, ip_addr ? ip_addr : "", -1, SQLITE_STATIC);
+
+	rc = sqlite3_step(stmt);
+	sqlite3_finalize(stmt);
+
+	if (rc != SQLITE_DONE) {
+		sys_err("sql_audit_log failed: %s\n", sqlite3_errmsg(sql));
+		return -1;
+	}
+	return 0;
 }

@@ -31,6 +31,7 @@
 
 #include "sec.h"
 #include "log.h"
+#include "sha256.h"
 
 /* ========================================================================
  * 1. Command whitelist validation (prevents command injection)
@@ -468,37 +469,63 @@ int sec_get_random_bytes(uint8_t *buf, size_t len)
 
 /*
  * sec_compute_hmac — compute HMAC-SHA256 over message data
- *   For future use with TLS-encrypted channels.
- *   Currently a placeholder — real implementation would use OpenSSL HMAC.
+ *
+ * Implements RFC 2104 HMAC using SHA-256:
+ *   HMAC(K, m) = SHA256(K_opad || SHA256(K_ipad || m))
+ * where K_ipad = K XOR 0x36, K_opad = K XOR 0x5c
+ *
+ * hmac_out must be at least 32 bytes (SHA256_DIGEST_SIZE).
  */
 void sec_compute_hmac(const uint8_t *data, size_t len,
                       const uint8_t *key, size_t key_len,
                       uint8_t *hmac_out)
 {
-	/* Placeholder: copy first 32 bytes of MD5 (not cryptographically
-	 * secure for HMAC, but provides basic integrity check for now).
-	 * Real implementation: use OpenSSL HMAC_CTX with SHA256. */
-	MD5_CTX ctx;
-	MD5Init(&ctx);
-	MD5Update(&ctx, key, (unsigned int)key_len);
-	MD5Update(&ctx, data, (unsigned int)len);
-	MD5Update(&ctx, key, (unsigned int)key_len);
-	MD5Final(&ctx, hmac_out);
-	/* Note: This is NOT real HMAC. Replace with OpenSSL HMAC-SHA256. */
-	sys_debug("HMAC computed (placeholder, len=%zu)\n", len);
+	uint8_t k_ipad[SHA256_BLOCK_SIZE];
+	uint8_t k_opad[SHA256_BLOCK_SIZE];
+	uint8_t inner_digest[SHA256_DIGEST_SIZE];
+	sha256_ctx ctx;
+	size_t i;
+
+	/* If key is longer than block size, hash it first */
+	uint8_t key_hash[SHA256_DIGEST_SIZE];
+	if (key_len > SHA256_BLOCK_SIZE) {
+		sha256(key, key_len, key_hash);
+		key = key_hash;
+		key_len = SHA256_DIGEST_SIZE;
+	}
+
+	/* Prepare padded keys */
+	memset(k_ipad, 0x36, SHA256_BLOCK_SIZE);
+	memset(k_opad, 0x5c, SHA256_BLOCK_SIZE);
+	for (i = 0; i < key_len; i++) {
+		k_ipad[i] ^= key[i];
+		k_opad[i] ^= key[i];
+	}
+
+	/* Inner hash: SHA256(K_ipad || data) */
+	sha256_init(&ctx);
+	sha256_update(&ctx, k_ipad, SHA256_BLOCK_SIZE);
+	sha256_update(&ctx, data, len);
+	sha256_final(&ctx, inner_digest);
+
+	/* Outer hash: SHA256(K_opad || inner_digest) */
+	sha256_init(&ctx);
+	sha256_update(&ctx, k_opad, SHA256_BLOCK_SIZE);
+	sha256_update(&ctx, inner_digest, SHA256_DIGEST_SIZE);
+	sha256_final(&ctx, hmac_out);
 }
 
 /*
- * sec_verify_hmac — verify HMAC of a message
+ * sec_verify_hmac — verify HMAC-SHA256 of a message
  *   Returns 0 if valid, non-zero if tampered.
  */
 int sec_verify_hmac(const uint8_t *data, size_t len,
                    const uint8_t *key, size_t key_len,
                    const uint8_t *expected_hmac)
 {
-	uint8_t computed[32];
+	uint8_t computed[SHA256_DIGEST_SIZE];
 	sec_compute_hmac(data, len, key, key_len, computed);
-	return memcmp(computed, expected_hmac, 16);  /* compare first 16 bytes */
+	return memcmp(computed, expected_hmac, SHA256_DIGEST_SIZE);
 }
 
 /* ========================================================================

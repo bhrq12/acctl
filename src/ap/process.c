@@ -307,9 +307,15 @@ static void proc_reg_resp(struct msg_ac_reg_resp_t *msg, int len)
 		if (sockfd >= 0) {
 			memset(&req, 0, sizeof(req));
 			strncpy(req.ifr_name, argument.nic, IFNAMSIZ - 1);
+			/* Delete existing address first to avoid conflicts */
+			ioctl(sockfd, SIOCDIFADDR, &req);
+			/* Set the new assigned address */
 			req.ifr_addr = *(struct sockaddr *)&msg->apaddr;
 			req.ifr_addr.sa_family = AF_INET;
 			ioctl(sockfd, SIOCSIFADDR, &req);
+			/* Bring interface up */
+			req.ifr_flags = IFF_UP | IFF_RUNNING;
+			ioctl(sockfd, SIOCSIFFLAGS, &req);
 			close(sockfd);
 			sys_info("IP address set: %s\n",
 				inet_ntoa(msg->apaddr.sin_addr));

@@ -28,6 +28,7 @@ struct nettcp_t {
 
 int tcp_connect(struct nettcp_t *tcp);
 int tcp_rcv(struct nettcp_t *tcp, char *data, int size);
+int tcp_rcv_msg(struct nettcp_t *tcp, char *data, int bufsize);
 int tcp_sendpkt(struct nettcp_t *tcp, char *data, int size);
 void tcp_close(struct nettcp_t *tcp);
 #ifdef SERVER

@@ -121,7 +121,7 @@ static void *__net_netrcv(void *arg)
 
 	struct nettcp_t tcp;
 	tcp.sock = clisock;
-	int rcvlen = tcp_rcv(&tcp, msg->data, NET_PKT_DATALEN);
+	int rcvlen = tcp_rcv_msg(&tcp, msg->data, NET_PKT_DATALEN);
 
 	if (rcvlen <= 0) {
 		sys_debug("TCP recv returned %d on sock=%d\n", rcvlen, clisock);

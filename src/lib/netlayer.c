@@ -33,6 +33,8 @@
 #include "log.h"
 #include "link.h"
 #include "netlayer.h"
+#include "msg.h"
+#include "apstatus.h"
 
 static int __tcp_alive(struct nettcp_t *tcp)
 {
@@ -116,21 +118,109 @@ int tcp_rcv(struct nettcp_t *tcp, char *data, int size)
 			data += len;
 			size -= len;
 			recvlen += len;
+			if(size <= 0)
+				break;
 			continue;
 		} else if(len < 0) {
 			if(errno == EINTR)
 				continue;
 			if(errno == EAGAIN)
 				break;
-			sys_err("sock: %d, tcp recv failed: %s(%d)\n", 
+			sys_err("sock: %d, tcp recv failed: %s(%d)\n",
 				tcp->sock, strerror(errno), errno);
 			break;
 		}
-		assert(len != 0);
+		/* len == 0: peer closed connection */
+		break;
 	}
 
 	sys_debug("Recv msg from sock: %d, size: %d\n", tcp->sock, recvlen);
 	return recvlen;
+}
+
+/*
+ * tcp_rcv_msg — protocol-aware TCP message receive
+ *
+ * Reads a single complete message from the TCP stream based on the
+ * protocol header. First reads msg_head_t to determine message type,
+ * then reads the remaining payload based on the expected message size.
+ *
+ * Returns: total bytes received (header + payload), or -1 on error.
+ */
+int tcp_rcv_msg(struct nettcp_t *tcp, char *data, int bufsize)
+{
+	assert(data != NULL && tcp->sock >= 0);
+
+	int hdrlen = (int)sizeof(struct msg_head_t);
+	int received = 0;
+
+	/* Phase 1: Read the fixed message header */
+	while (received < hdrlen) {
+		int len = recv(tcp->sock, data + received,
+			hdrlen - received, 0);
+		if (len > 0) {
+			received += len;
+		} else if (len < 0) {
+			if (errno == EINTR) continue;
+			if (errno == EAGAIN) break;
+			return -1;
+		} else {
+			return (received > 0) ? received : -1;
+		}
+	}
+
+	if (received < hdrlen)
+		return received;
+
+	/* Phase 2: Determine expected message length from header */
+	struct msg_head_t *head = (struct msg_head_t *)data;
+	int msg_len = hdrlen;  /* minimum: header only */
+
+	switch (head->msg_type) {
+	case MSG_AC_BRD:
+		msg_len = (int)sizeof(struct msg_ac_brd_t);
+		break;
+	case MSG_AC_REG_RESP:
+		msg_len = (int)sizeof(struct msg_ac_reg_resp_t);
+		break;
+	case MSG_AP_REG:
+		msg_len = (int)sizeof(struct msg_ap_reg_t);
+		break;
+	case MSG_AP_STATUS:
+		msg_len = hdrlen + (int)sizeof(struct apstatus_t);
+		break;
+	case MSG_AP_REPORT_ACK:
+		msg_len = (int)sizeof(struct msg_ack_t);
+		break;
+	case MSG_HEARTBEAT:
+		msg_len = (int)sizeof(struct msg_heartbeat_t);
+		break;
+	default:
+		/* Unknown type or MSG_AC_CMD (variable) */
+		break;
+	}
+
+	if (msg_len > bufsize)
+		msg_len = bufsize;
+
+	/* Phase 3: Read remaining payload */
+	while (received < msg_len) {
+		int len = recv(tcp->sock, data + received,
+			msg_len - received, 0);
+		if (len > 0) {
+			received += len;
+		} else if (len < 0) {
+			if (errno == EINTR) continue;
+			if (errno == EAGAIN) break;
+			break;
+		} else {
+			break;
+		}
+	}
+
+	sys_debug("Recv msg from sock: %d, type=%d, size: %d\n",
+		tcp->sock, head->msg_type, received);
+	return received;
 }
 
 int tcp_sendpkt(struct nettcp_t *tcp, char *data, int size)
