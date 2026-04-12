@@ -1,0 +1,7 @@
+<% if self.section ~= "0" and self.map:get(self.section, "device_down") == "0" then %>
+<span style="color:green;font-weight:bold">● Online</span>
+<% elseif self.section ~= "0" and self.map:get(self.section, "device_down") == "1" then %>
+<span style="color:#cc3300;font-weight:bold">○ Offline</span>
+<% else %>
+<span style="color:#999">Unknown</span>
+<% end %>

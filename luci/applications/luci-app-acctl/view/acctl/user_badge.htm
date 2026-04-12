@@ -1,0 +1,8 @@
+<% local users = self.map:get(self.section, "online_user_num") or 0 %>
+<% if tonumber(users) > 50 then %>
+<span style="color:#dc3545;font-weight:bold"><%=users%></span>
+<% elseif tonumber(users) > 20 then %>
+<span style="color:#fd7e14;font-weight:bold"><%=users%></span>
+<% else %>
+<span style="color:#28a745"><%=users%></span>
+<% end %>

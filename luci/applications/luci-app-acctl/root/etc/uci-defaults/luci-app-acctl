@@ -1,0 +1,32 @@
+#!/bin/sh
+# LuCI app-acctl post-install script
+# Creates default UCI config if not exists
+
+[ -f /etc/config/acctl ] && exit 0
+
+cat > /etc/config/acctl <<'EOF'
+config acctl 'acctl'
+	option enabled     '0'
+	option interface   'br-lan'
+	option port        '7960'
+	option password    ''
+	option brditv      '30'
+	option reschkitv   '300'
+	option msgitv      '3'
+	option daemon      '1'
+	option debug       '0'
+
+config node_default 'default'
+	list ssid 'OpenWrt-AC'
+	option encryption 'psk2'
+	option key 'changeme123'
+	option channel_mode '11n'
+	option channel 'auto'
+	option signal 'auto'
+EOF
+
+# Initialize database
+[ -d /etc/acctl ] || mkdir -p /etc/acctl
+[ -f /etc/acctl/ac.db ] || sqlite3 /etc/acctl/ac.db < /dev/null
+
+exit 0

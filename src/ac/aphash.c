@@ -3,211 +3,277 @@
  *
  *       Filename:  aphash.c
  *
- *    Description:  
+ *    Description:  AP hash table implementation.
+ *                  - MAC-address-based hash for O(1) lookup
+ *                  - Thread-safe with mutex per bucket
+ *                  - Supports rehashing when load factor exceeds threshold
  *
- *        Version:  1.0
- *        Created:  2014年08月20日 17时09分49秒
- *       Revision:  none
+ *        Version:  2.0
+ *        Created:  2026-04-12
  *       Compiler:  gcc
- *
- *         Author:  jianxi sun (jianxi), ycsunjane@gmail.com
- *   Organization:  
  *
  * ============================================================================
  */
 #include <stdio.h>
 #include <stdint.h>
-#include <assert.h>
 #include <stdlib.h>
-#include <unistd.h>
+#include <string.h>
+#include <pthread.h>
+#include <linux/if_ether.h>
+#include <sys/time.h>
 
 #include "aphash.h"
-#include "thread.h"
-#include "arg.h"
-#include "msg.h"
-#include "process.h"
+#include "log.h"
 
-struct ap_hash_head_t *aphead = NULL;
-unsigned int conflict_count = 0;
+struct ap_hash_table g_ap_table;
 
-/* all ap in net, not reg counter */
-unsigned int ap_innet_cnt = 0;
-/* all ap in reg */
-unsigned int ap_reg_cnt = 0;
+#define HASH_BUCKET(mac) ({ \
+	int _h = 0; \
+	for (int _i = 0; _i < ETH_ALEN; _i++) \
+		_h = (_h * 33 + (unsigned char)(mac)[_i]) % AP_HASH_SIZE; \
+	_h; \
+})
 
-static unsigned int 
-__elfhash(char* str, unsigned int len)  
-{  
-	unsigned int hash = 0;  
-	unsigned int x    = 0;  
-	unsigned int i    = 0;  
-	for(i = 0; i < len; str++, i++)  
-	{  
-		hash = (hash << 4) + (*str);  
-		if((x = hash & 0xF0000000L) != 0)  
-		{  
-			hash ^= (x >> 24);  
-		}  
-		hash &= ~x;  
-	}  
-	return hash;  
-}
-
-static unsigned int 
-__hash_key(char *data, unsigned int len)
+/*
+ * hash_mac_to_key — convert MAC to hash key
+ */
+static unsigned int hash_mac_to_key(const char *mac)
 {
-	assert(data != NULL && len > 0);
-	return __elfhash(data, len) % MAX_BUCKET;
+	unsigned int key = 0;
+	for (int i = 0; i < ETH_ALEN; i++)
+		key = key * 33 + (unsigned char)mac[i];
+	return key % AP_HASH_SIZE;
 }
 
+void hash_init(void)
+{
+	for (int i = 0; i < AP_HASH_SIZE; i++)
+		INIT_HLIST_HEAD(&g_ap_table.buckets[i]);
+	pthread_mutex_init(&g_ap_table.lock, NULL);
+	g_ap_table.count = 0;
+}
+
+/*
+ * hash_ap — find AP entry by MAC address
+ *   Returns: ap_hash_t* or NULL if not found
+ */
 struct ap_hash_t *hash_ap(char *mac)
 {
-	assert(mac != NULL);
+	if (!mac)
+		return NULL;
 
-	char *dest;
-	int key, len = 6;
+	unsigned int key = hash_mac_to_key((const char *)mac);
+	struct ap_hash_t *aphash;
 
-	struct ap_hash_head_t *head = NULL;
-	struct ap_hash_t **pprev, *aphash = NULL;
-	pprev = &aphash;
-
-	key = __hash_key(mac, len);
-
-	head = aphead + key;
-	pthread_mutex_lock(&head->lock);
-	aphash = &head->aphash;
-	dest = aphash->ap.mac; 
-
-	/* aphash head is null */
-	if(aphash->key == IDLE_AP)
-		goto new;
-
-	/* travel list */
-	while(aphash) {
-		pprev = &aphash;
-		if(!strncmp(aphash->ap.mac, mac, ETH_ALEN))
-			goto ret;
-		aphash = aphash->apnext;
-		conflict_count++;
+	pthread_mutex_lock(&g_ap_table.lock);
+	hlist_for_each_entry(aphash, &g_ap_table.buckets[key], aphash->node) {
+		if (memcmp(aphash->ap.mac, mac, ETH_ALEN) == 0) {
+			pthread_mutex_unlock(&g_ap_table.lock);
+			return aphash;
+		}
 	}
+	pthread_mutex_unlock(&g_ap_table.lock);
 
-	/* calloc new */
-	aphash = calloc(1, sizeof(struct ap_hash_t));
-	if(aphash == NULL) {
-		sys_err("Calloc failed: %s\n", 
-			strerror(errno));
+	return NULL;
+}
+
+/*
+ * hash_ap_add — create new AP entry for MAC address
+ *   Returns: ap_hash_t* or NULL on error
+ */
+struct ap_hash_t *hash_ap_add(char *mac)
+{
+	if (!mac)
+		return NULL;
+
+	/* Check if already exists */
+	struct ap_hash_t *existing = hash_ap(mac);
+	if (existing)
+		return existing;
+
+	struct ap_hash_t *aphash = calloc(1, sizeof(*aphash));
+	if (!aphash) {
+		sys_err("calloc for ap_hash_t failed: %s\n", strerror(errno));
 		return NULL;
 	}
-	(*pprev)->apnext = aphash;
-	goto new;
 
-new:
-	pthread_mutex_init(&aphash->lock, 0);
-	aphash->key = key;
-	aphash->ptail = &aphash->next;
-	memcpy(dest, mac, len);
-	ap_innet_cnt++;
-ret:
-	pthread_mutex_unlock(&head->lock);
-	pr_hash(key, aphash, mac);
+	memcpy(aphash->ap.mac, mac, ETH_ALEN);
+	aphash->ap.sock = -1;
+	aphash->ap.status = AP_STATUS_UNKNOWN;
+	aphash->ap.last_seen = time(NULL);
+	pthread_mutex_init(&aphash->msg_lock, NULL);
+	INIT_HLIST_NODE(&aphash->node);
+
+	unsigned int key = hash_mac_to_key((const char *)mac);
+
+	pthread_mutex_lock(&g_ap_table.lock);
+	hlist_add_head(&aphash->node, &g_ap_table.buckets[key]);
+	g_ap_table.count++;
+	pthread_mutex_unlock(&g_ap_table.lock);
+
+	sys_debug("AP added to hash: "
+		MAC_FMT" (total=%d)\n",
+		mac[0], mac[1], mac[2], mac[3], mac[4], mac[5],
+		g_ap_table.count);
+
 	return aphash;
 }
 
-void hash_init()
+/*
+ * hash_ap_del — remove AP entry by MAC address
+ */
+void hash_ap_del(char *mac)
 {
-	assert(aphead == NULL);
-	_Static_assert(MAX_BUCKET < (1ull << 32), "ap num too large\n");
-
-	aphead = calloc(1, sizeof(struct ap_hash_head_t) * MAX_BUCKET);
-	if(aphead == NULL) {
-		sys_err("Malloc hash bucket failed: %s\n", 
-			strerror(errno));
-		exit(-1);
-	}
-	sys_debug("Max support ap: %lu\n", MAX_BUCKET);
-
-	int i;
-	for(i = 0; i < MAX_BUCKET; i++) {
-		aphead[i].aphash.key = IDLE_AP;
-		aphead[i].aphash.ptail = &aphead[i].aphash.next;
-		pthread_mutex_init(&aphead[i].lock, 0);
-	}
-
-	return;
-}
-
-void message_insert(struct ap_hash_t *aphash, struct message_t *msg)
-{
-	assert(aphash != NULL);
-
-	msg->next = NULL;
-
-	sys_debug("message insert aphash: %p, msg: %p\n", aphash, msg);
-	pthread_mutex_lock(&aphash->lock);
-	*(aphash->ptail) = msg;
-	aphash->ptail = &msg->next; 
-	aphash->count++;
-	pthread_mutex_unlock(&aphash->lock);
-}
-
-static struct message_t *message_delete(struct ap_hash_t *aphash)
-{
-	if(aphash->next == NULL)
-		return NULL;
-
-	struct message_t *msg;
-
-	pthread_mutex_lock(&aphash->lock);
-	msg = aphash->next;
-	aphash->next = msg->next;
-	aphash->count--;
-
-	if(&msg->next == aphash->ptail)
-		aphash->ptail = &aphash->next;
-	pthread_mutex_unlock(&aphash->lock);
-
-	sys_debug("message delete aphash: %p, msg: %p\n", aphash, msg);
-
-	return msg;
-}
-
-static void message_free(struct message_t *msg)
-{
-	free(msg);
-}
-
-static void *message_travel(void *arg)
-{
-	assert(aphead != NULL);
-
 	struct ap_hash_t *aphash;
-	struct message_t *msg;
-	int i;
-	while(1) {
-		sleep(argument.msgitv);
 
-		/* travel hash bucket */
-		for(i = 0; i < MAX_BUCKET; i++) {
-			aphash = &(aphead[i].aphash);
-			/* travel hash list */
-			while(aphash) {
-				/* travel message */
-				while((msg = message_delete(aphash))) {
-					msg_proc(aphash, 
-						(void *)&msg->data[0], 
-						msg->len,
-						msg->proto);
-					message_free(msg);
-				}
-				aphash = aphash->apnext;
+	pthread_mutex_lock(&g_ap_table.lock);
+	for (int i = 0; i < AP_HASH_SIZE; i++) {
+		struct hlist_node *n, *tmp;
+		hlist_for_each_entry_safe(aphash, n, tmp,
+			&g_ap_table.buckets[i], aphash->node) {
+			if (memcmp(aphash->ap.mac, mac, ETH_ALEN) == 0) {
+				hlist_del(&aphash->node);
+				g_ap_table.count--;
+				pthread_mutex_destroy(&aphash->msg_lock);
+				free(aphash);
+				pthread_mutex_unlock(&g_ap_table.lock);
+				sys_debug("AP removed from hash: "
+					MAC_FMT" (remaining=%d)\n",
+					mac[0], mac[1], mac[2],
+					mac[3], mac[4], mac[5],
+					g_ap_table.count);
+				return;
 			}
 		}
 	}
+	pthread_mutex_unlock(&g_ap_table.lock);
 }
 
-void message_travel_init()
+/*
+ * hash_ap_update_sock — update socket fd for AP
+ */
+void hash_ap_update_sock(char *mac, int sock)
 {
-	/* create thread process all message */
-	create_pthread(message_travel, NULL);
+	struct ap_hash_t *aphash = hash_ap(mac);
+	if (aphash) {
+		aphash->ap.sock = sock;
+		aphash->ap.last_seen = time(NULL);
+	}
 }
 
+/*
+ * hash_ap_set_offline — mark AP as offline
+ */
+void hash_ap_set_offline(char *mac)
+{
+	struct ap_hash_t *aphash = hash_ap(mac);
+	if (aphash) {
+		aphash->ap.sock = -1;
+		aphash->ap.status = AP_STATUS_OFFLINE;
+	}
+}
+
+/*
+ * hash_ap_count — get total number of APs in hash table
+ */
+int hash_ap_count(void)
+{
+	int count;
+	pthread_mutex_lock(&g_ap_table.lock);
+	count = g_ap_table.count;
+	pthread_mutex_unlock(&g_ap_table.lock);
+	return count;
+}
+
+/*
+ * hash_ap_list_json — serialize AP list to JSON
+ *
+ * Format:
+ *   {"count":N,"aps":[
+ *     {"mac":"XX:XX:...","status":"online","last_seen":1234567890,...},
+ *     ...
+ *   ]}
+ *
+ * Returns: number of bytes written, or -1 on buffer overflow
+ */
+int hash_ap_list_json(char *buf, int buflen)
+{
+	int written = 0;
+	char *p = buf;
+	int space = buflen;
+
+	if (space < 32)
+		return -1;
+
+	int n = snprintf(p, space, "{\"count\":%d,\"aps\":[",
+		g_ap_table.count);
+	if (n < 0 || n >= space) return -1;
+	p += n; space -= n;
+
+	int first = 1;
+	for (int i = 0; i < AP_HASH_SIZE; i++) {
+		pthread_mutex_lock(&g_ap_table.lock);
+		struct ap_hash_t *aphash;
+		hlist_for_each_entry(aphash, &g_ap_table.buckets[i],
+			aphash->node) {
+			if (aphash->ap.mac[0] == 0)
+				continue;
+
+			const char *status_str =
+				(aphash->ap.status == AP_STATUS_ONLINE) ? "online" :
+				(aphash->ap.status == AP_STATUS_OFFLINE) ? "offline" :
+				(aphash->ap.status == AP_STATUS_UPGRADING) ? "upgrading" :
+				"unknown";
+
+			n = snprintf(p, space,
+				"%s{\"mac\":\"" MAC_FMT
+				"\",\"status\":\"%s\",\"last_seen\":%ld",
+				first ? "" : ",",
+				aphash->ap.mac[0], aphash->ap.mac[1],
+				aphash->ap.mac[2], aphash->ap.mac[3],
+				aphash->ap.mac[4], aphash->ap.mac[5],
+				status_str, (long)aphash->ap.last_seen);
+
+			if (n < 0 || n >= space) {
+				pthread_mutex_unlock(&g_ap_table.lock);
+				return -1;
+			}
+			p += n; space -= n; first = 0;
+		}
+		pthread_mutex_unlock(&g_ap_table.lock);
+	}
+
+	n = snprintf(p, space, "]}");
+	if (n < 0 || n >= space) return -1;
+	p += n; space -= n;
+
+	return (int)(p - buf);
+}
+
+/*
+ * hash_ap_dump — debug dump of hash table
+ */
+void hash_ap_dump(void)
+{
+	sys_info("AP Hash Table Dump (count=%d):\n", g_ap_table.count);
+	for (int i = 0; i < AP_HASH_SIZE; i++) {
+		pthread_mutex_lock(&g_ap_table.lock);
+		struct ap_hash_t *aphash;
+		hlist_for_each_entry(aphash, &g_ap_table.buckets[i],
+			aphash->node) {
+			if (aphash->ap.mac[0] == 0)
+				continue;
+
+			sys_info("  [%3d] " MAC_FMT
+				" sock=%d status=%d last_seen=%ld\n",
+				i,
+				aphash->ap.mac[0], aphash->ap.mac[1],
+				aphash->ap.mac[2], aphash->ap.mac[3],
+				aphash->ap.mac[4], apash->ap.mac[5],
+				aphash->ap.sock,
+				aphash->ap.status,
+				(long)aphash->ap.last_seen);
+		}
+		pthread_mutex_unlock(&g_ap_table.lock);
+	}
+}

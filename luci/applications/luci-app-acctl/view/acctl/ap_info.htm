@@ -1,0 +1,5 @@
+<% if self.option == "_uuid" then %>
+<span style="font-family:monospace;font-size:11px"><%=ac_uuid or "N/A"%></span>
+<% elseif self.option == "_total" then %>
+<span class="badge"><%=self.option%></span>
+<% end %>

@@ -1,0 +1,46 @@
+<%+footer%>
+<script type="text/javascript">
+// AC Controller Status Auto-Refresh
+(function() {
+    var refreshInterval = 5000; // 5 seconds
+    function fetchStatus() {
+        XHR.get('<%=controller%>/admin/network/acctl/status', null,
+            function(x, data) {
+                if (data) {
+                    var el = document.getElementById('ac-status-bar');
+                    if (el) {
+                        el.innerHTML = String.format(
+                            'AP Online: <strong>{0}</strong> / <strong>{1}</strong> | ' +
+                            'Alarms: <strong style="color:{2}">{3}</strong> | ' +
+                            '<span style="color:{4}">{5}</span>',
+                            data.ap_online || 0,
+                            data.ap_total || 0,
+                            data.alarm_count > 0 ? '#dc3545' : '#28a745',
+                            data.alarm_count || 0,
+                            data.running ? '#28a745' : '#dc3545',
+                            data.running ? '● Running' : '○ Stopped'
+                        );
+                    }
+                }
+            }
+        );
+    }
+    window.addEventListener('load', function() {
+        setInterval(fetchStatus, refreshInterval);
+        fetchStatus();
+    });
+})();
+</script>
+<%+header%>
+
+<div id="ac-status-bar" style="
+    background:#f8f9fa;
+    border:1px solid #dee2e6;
+    border-radius:4px;
+    padding:8px 16px;
+    margin-bottom:16px;
+    font-size:13px;
+    color:#495057;
+">
+    <%:Loading AC Controller status...%>
+</div>

@@ -3,15 +3,11 @@
  *
  *       Filename:  message.c
  *
- *    Description:  
+ *    Description:  AP-side message queue. Simplified — single-threaded.
  *
- *        Version:  1.0
- *        Created:  2014年08月26日 09时16分29秒
- *       Revision:  none
+ *        Version:  2.0
+ *        Created:  2026-04-12
  *       Compiler:  gcc
- *
- *         Author:  jianxi sun (jianxi), ycsunjane@gmail.com
- *   Organization:  
  *
  * ============================================================================
  */
@@ -21,77 +17,86 @@
 #include <assert.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "log.h"
 #include "arg.h"
 #include "msg.h"
 #include "thread.h"
-#include "message.h"
 #include "process.h"
 
 struct message_t *head = NULL;
 struct message_t **tail = &head;
 pthread_mutex_t message_lock = PTHREAD_MUTEX_INITIALIZER;
-#define MUTEX_LOCK(lock)  pthread_mutex_lock(&lock)
-#define MUTEX_UNLOCK(lock)  pthread_mutex_unlock(&lock)
+
+#define MUTEX_LOCK()    pthread_mutex_lock(&message_lock)
+#define MUTEX_UNLOCK()  pthread_mutex_unlock(&message_lock)
 
 static int message_num = 0;
+
 void message_insert(struct message_t *msg)
 {
-	sys_debug("message insert msg: %p\n", msg);
+	MUTEX_LOCK();
 	msg->next = NULL;
-
-	MUTEX_LOCK(message_lock);
-	message_num++; 
+	message_num++;
 	*tail = msg;
 	tail = &msg->next;
-	MUTEX_UNLOCK(message_lock);
+	MUTEX_UNLOCK();
 }
 
-struct message_t * message_delete()
+struct message_t *message_delete(void)
 {
-	MUTEX_LOCK(message_lock);
-	if(message_num == 0) {
-		assert(*tail == head);
-		MUTEX_UNLOCK(message_lock);
+	MUTEX_LOCK();
+	if (message_num == 0) {
+		MUTEX_UNLOCK();
 		return NULL;
 	}
-	
+
 	struct message_t *tmp = head;
+	head = head->next;
 	message_num--;
 
-	head = head->next;
-	if(tail == &tmp->next)
+	if (tail == &tmp->next)
 		tail = &head;
 
-	MUTEX_UNLOCK(message_lock);
-	sys_debug("message delete: %p\n", tmp);
+	MUTEX_UNLOCK();
 	return tmp;
 }
 
 void message_free(struct message_t *msg)
 {
-	free(msg);
+	if (msg) {
+		if (msg->data)
+			free(msg->data);
+		free(msg);
+	}
 }
 
 void *message_travel(void *arg)
 {
+	(void)arg;
 	struct message_t *msg;
-	while(1) {
+
+	while (1) {
 		sleep(argument.msgitv);
-		if(head == NULL) continue;
-		while((msg = message_delete())) {
-			msg_proc((void *)msg->data, msg->len, msg->proto);
+
+		MUTEX_LOCK();
+		int pending = message_num;
+		MUTEX_UNLOCK();
+
+		if (pending == 0)
+			continue;
+
+		while ((msg = message_delete()) != NULL) {
+			msg_proc(msg->data, msg->len, msg->proto);
 			message_free(msg);
 		}
-		sys_debug("Message travel pthreads (next %d second later)\n", 
-			argument.msgitv);
 	}
+
 	return NULL;
 }
 
-void message_init()
+void message_init(void)
 {
-	/* create thread to travel all message */
 	create_pthread(message_travel, NULL);
 }

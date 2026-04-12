@@ -1,0 +1,42 @@
+#!/bin/sh /etc/rc.common
+# Convenience symlink: /etc/init.d/apctl → /etc/init.d/acctl
+# This just calls the AP-specific functions in acctl
+
+START=96
+USE_PROCD=1
+
+NAME=apctl
+
+# Load shared functions from acctl
+. /etc/init.d/acctl
+
+stop_service() {
+	stop_service_ap
+}
+
+start_service() {
+	start_service_ap
+}
+
+reload_service() {
+	# AP reload = restart
+	stop_service_ap
+	start_service_ap
+}
+
+start() {
+	start_service_ap
+}
+
+stop() {
+	stop_service_ap
+}
+
+restart() {
+	stop
+	start
+}
+
+service_triggers() {
+	procd_add_config_trigger "config.change" "acctl" "/etc/init.d/apctl" reload
+}

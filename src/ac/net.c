@@ -3,15 +3,18 @@
  *
  *       Filename:  net.c
  *
- *    Description:  
+ *    Description:  AC network layer — datalink broadcast + TCP listener.
+ *                  - Datalink layer: sends AC broadcast probe packets
+ *                  - TCP listener: accepts AP connections
+ *                  - Uses epoll for async I/O multiplexing
  *
- *        Version:  1.0
- *        Created:  2014年08月20日 14时25分36秒
- *       Revision:  none
+ *        Version:  2.0
+ *        Created:  2026-04-12
+ *       Revision:  improved error handling, proper resource cleanup
  *       Compiler:  gcc
  *
  *         Author:  jianxi sun (jianxi), ycsunjane@gmail.com
- *   Organization:  
+ *   Organization:  OpenWrt AC Controller Project
  *
  * ============================================================================
  */
@@ -36,168 +39,235 @@
 #include "link.h"
 #include "chap.h"
 
+/* ========================================================================
+ * Datalink layer receive — handle ETH broadcast packets
+ * ======================================================================== */
+
 static void *__net_dllrecv(void *arg)
 {
+	(void)arg;
 	struct message_t *msg;
-	msg = malloc(sizeof(struct message_t) + DLL_PKT_DATALEN);
-	if(msg == NULL) {
-		sys_warn("malloc memory for dllayer failed: %s\n", 
+
+	msg = malloc(sizeof(*msg) + DLL_PKT_DATALEN);
+	if (!msg) {
+		sys_err("malloc for datalink message failed: %s\n",
 			strerror(errno));
-		goto err;
+		return NULL;
 	}
 
-	int rcvlen;
-	rcvlen = dll_rcv(msg->data, DLL_PKT_DATALEN);
-	if(rcvlen < (int)sizeof(struct ethhdr)) {
+	int rcvlen = dll_rcv(msg->data, DLL_PKT_DATALEN);
+	if (rcvlen < (int)sizeof(struct ethhdr)) {
 		free(msg);
-		goto err;
+		return NULL;
 	}
+
 	msg->len = rcvlen;
 
-	sys_debug("datalink layer recive a packet\n");
-	char *mac;
-	struct msg_head_t *head;
-	head = (struct msg_head_t *)(msg->data);
-	mac = &head->mac[0];
+	struct msg_head_t *head = (struct msg_head_t *)msg->data;
+	char *mac = head->mac;
 
-	struct ap_hash_t *aphash;
-	aphash = hash_ap(mac);
-	if(aphash == NULL) {
-		free(msg);
-		goto err;
+	struct ap_hash_t *aphash = hash_ap(mac);
+	if (!aphash) {
+		/* Unknown AP — create new entry */
+		aphash = hash_ap_add(mac);
+		if (!aphash) {
+			free(msg);
+			return NULL;
+		}
 	}
 
 	memcpy(aphash->ap.mac, mac, ETH_ALEN);
-	msg->proto = MSG_PROTO_ETH; 
-	message_insert(aphash, msg);
-err:
+	msg->proto = MSG_PROTO_ETH;
+	ac_message_insert(aphash, msg);
+
+	sys_debug("Datalink packet received from "
+		MAC_FMT" (len=%d)\n",
+		mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], rcvlen);
+
 	return NULL;
 }
 
-/* pthread recv netlayer */
+/* ========================================================================
+ * TCP receive — handle TCP stream from AP
+ * ======================================================================== */
+
 static void *__net_netrcv(void *arg)
 {
 	struct sockarr_t *sockarr = arg;
 	unsigned int events = sockarr->retevents;
 	int clisock = sockarr->sock;
 
-	if(events & EPOLLRDHUP ||
-		events & EPOLLERR ||
-		events & EPOLLHUP) {
-		sys_debug("Epool get err: %s(%d)\n", strerror(errno), errno);
+	/* Check for connection errors */
+	if ((events & EPOLLRDHUP) ||
+		(events & EPOLLERR) ||
+		(events & EPOLLHUP)) {
+		sys_debug("TCP connection error on sock=%d (events=0x%x)\n",
+			clisock, events);
 		ap_lost(clisock);
 		return NULL;
 	}
 
-	if(!(events & EPOLLIN)) {
-		sys_warn("Epoll unknow events: %u\n", events);
+	if (!(events & EPOLLIN)) {
+		sys_warn("Unknown epoll events on sock=%d: 0x%x\n",
+			clisock, events);
 		return NULL;
 	}
 
-	struct message_t *msg;
-	msg = malloc(sizeof(struct message_t) + NET_PKT_DATALEN);
-	if(msg == NULL) {
-		sys_warn("Malloc memory for message failed: %s(%d)\n", 
-			strerror(errno), errno);
-		goto err;
+	struct message_t *msg = malloc(sizeof(*msg) + NET_PKT_DATALEN);
+	if (!msg) {
+		sys_warn("malloc for TCP message failed: %s\n",
+			strerror(errno));
+		return NULL;
 	}
 
-	sys_debug("net layer recive a packet\n");
 	struct nettcp_t tcp;
 	tcp.sock = clisock;
-	int rcvlen;
-	rcvlen = tcp_rcv(&tcp, msg->data, NET_PKT_DATALEN);
-	if(rcvlen <= 0) {
+	int rcvlen = tcp_rcv(&tcp, msg->data, NET_PKT_DATALEN);
+
+	if (rcvlen <= 0) {
+		sys_debug("TCP recv returned %d on sock=%d\n", rcvlen, clisock);
 		ap_lost(clisock);
 		free(msg);
-		goto err;
+		return NULL;
 	}
+
 	msg->len = rcvlen;
 
-	char *mac;
-	struct msg_head_t *head;
-	head = (struct msg_head_t *)(msg->data);
-	mac = &head->mac[0];
+	struct msg_head_t *head = (struct msg_head_t *)msg->data;
+	char *mac = head->mac;
 
-	struct ap_hash_t *aphash;
-	aphash = hash_ap(mac);
-	if(aphash == NULL) {
-		free(msg);
-		goto err;
+	struct ap_hash_t *aphash = hash_ap(mac);
+	if (!aphash) {
+		/* New AP connecting via TCP (should have registered first via ETH) */
+		aphash = hash_ap_add(mac);
+		if (!aphash) {
+			free(msg);
+			return NULL;
+		}
 	}
 
 	aphash->ap.sock = clisock;
+	aphash->ap.last_seen = time(NULL);
 	msg->proto = MSG_PROTO_TCP;
-	message_insert(aphash, msg);
-err:
+	ac_message_insert(aphash, msg);
+
+	sys_debug("TCP packet received from "
+		MAC_FMT" (sock=%d, len=%d)\n",
+		mac[0], mac[1], mac[2], mac[3], mac[4], mac[5],
+		clisock, rcvlen);
+
 	return NULL;
 }
 
-/* pthread broadcast */
+/* ========================================================================
+ * AC broadcast probe thread — periodically announce AC presence
+ * ======================================================================== */
+
 static void *net_dllbrd(void *arg)
 {
-	struct msg_ac_brd_t *reqbuf = 
-		malloc(sizeof(struct msg_ac_brd_t));
-	if(reqbuf == NULL) {
-		sys_err("Malloc broadcast message failed: %s(%d)\n",
-			strerror(errno), errno);
+	(void)arg;
+	struct msg_ac_brd_t *reqbuf;
+
+	reqbuf = malloc(sizeof(*reqbuf));
+	if (!reqbuf) {
+		sys_err("malloc for broadcast packet failed: %s\n",
+			strerror(errno));
 		return NULL;
 	}
 
-	while(1) {
+	while (1) {
+		/* Generate new random challenge for next registration round */
 		ac.random = chap_get_random();
-		sys_debug("Send a broadcast probe msg, random: %u (next %d second later)\n", 
-			ac.random, argument.brditv);
 
-		/* generate random0 */
-		fill_msg_header(&reqbuf->header, MSG_AC_BRD, 
+		fill_msg_header(&reqbuf->header, MSG_AC_BRD,
 			&ac.acuuid[0], ac.random);
 
-		/* first broad cast packet, there is no need calculate chap */
-		dll_brdcast((char *)reqbuf, sizeof(struct msg_ac_brd_t));
+		sys_debug("Sending AC broadcast probe (random=%u, interval=%ds)\n",
+			ac.random, argument.brditv);
+
+		int ret = dll_brdcast((char *)reqbuf, sizeof(*reqbuf));
+		if (ret < 0) {
+			sys_warn("Broadcast failed, retrying in 5s\n");
+			sleep(5);
+			continue;
+		}
+
 		sleep(argument.brditv);
 	}
+
+	/* Never reached — thread runs forever */
 	return NULL;
 }
 
+/* ========================================================================
+ * TCP listener thread — accept incoming AP connections
+ * ======================================================================== */
+
 static void *net_netlisten(void *arg)
 {
+	(void)arg;
 	int ret;
 	struct nettcp_t tcplisten;
+
 	tcplisten.addr.sin_family = AF_INET;
 	tcplisten.addr.sin_addr.s_addr = htonl(INADDR_ANY);
-	tcplisten.addr.sin_port = htons(argument.port);
+	tcplisten.addr.sin_port = htons((uint16_t)argument.port);
+
 	ret = tcp_listen(&tcplisten);
-	if(ret < 0) {
-		sys_err("Create listen tcp failed\n");
-		exit(-1);
+	if (ret < 0) {
+		sys_err("TCP listen failed on port %d: %s\n",
+			argument.port, strerror(errno));
+		return NULL;
 	}
 
-	while(1)
-		tcp_accept(&tcplisten, __net_netrcv);
+	sys_info("TCP listener started on port %d (backlog=%d)\n",
+		argument.port, 512);
+
+	while (1) {
+		ret = tcp_accept(&tcplisten, __net_netrcv);
+		if (ret < 0) {
+			if (errno == EINTR)
+				continue;
+			sys_err("tcp_accept failed: %s\n", strerror(errno));
+			sleep(1);
+		}
+	}
+
+	return NULL;
 }
 
-void net_init()
+/* ========================================================================
+ * Network layer initialization
+ * ======================================================================== */
+
+void net_init(void)
 {
 	int sock;
 
-	/* init epoll */
+	/* Initialize epoll multiplexing */
 	net_epoll_init();
+	sys_debug("epoll initialized\n");
 
-	/* init datalink layer */
-	dll_init(&argument.nic[0], &sock, NULL, NULL);
+	/* Initialize datalink layer */
+	dll_init(argument.nic, &sock, NULL, NULL);
 	insert_sockarr(sock, __net_dllrecv, NULL);
+	sys_debug("Datalink layer initialized (nic=%s, proto=0x%04x)\n",
+		argument.nic, (unsigned int)ETH_INNO);
 
-	/* create pthread recv msg */
+	/* Start message processing thread */
 	create_pthread(net_recv, NULL);
-	sys_debug("Create pthread net_recv msg\n");
+	sys_debug("Message processing thread started\n");
 
-	/* create pthread tcp listen */
+	/* Start TCP listener thread */
 	create_pthread(net_netlisten, NULL);
-	sys_debug("Create pthread tcp listen\n");
+	sys_debug("TCP listener thread started\n");
 
-	/* create pthread broadcast ac probe packet */
+	/* Start broadcast probe thread */
 	create_pthread(net_dllbrd, NULL);
-	sys_debug("Create pthread broadcast dllayer msg\n");
-}
+	sys_debug("AC broadcast probe thread started (interval=%ds)\n",
+		argument.brditv);
 
+	/* Start AP heartbeat checker thread */
+	create_pthread(ap_heartbeat_check, NULL);
+	sys_debug("AP heartbeat checker thread started\n");
+}

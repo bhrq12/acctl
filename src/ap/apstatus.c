@@ -3,30 +3,239 @@
  *
  *       Filename:  apstatus.c
  *
- *    Description:  
+ *    Description:  AP system status collection.
+ *                  Gathers real system information from /proc and UCI.
  *
- *        Version:  1.0
- *        Created:  2014年09月01日 15时27分34秒
- *       Revision:  none
+ *        Version:  2.0
+ *        Created:  2026-04-12
  *       Compiler:  gcc
- *
- *         Author:  jianxi sun (jianxi), ycsunjane@gmail.com
- *   Organization:  
  *
  * ============================================================================
  */
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/ioctl.h>
+#include <net/if.h>
+#include <sys/statvfs.h>
 
 #include "apstatus.h"
+#include "log.h"
 
-struct apstatus_t ap = {0};
+static struct apstatus_t cached_status;
+static time_t cache_time = 0;
+#define CACHE_TTL  5  /* seconds */
 
-struct apstatus_t *get_apstatus()
+/* ========================================================================
+ * Read a /proc file into a buffer
+ * ======================================================================== */
+
+static int read_proc(const char *path, char *buf, size_t buflen)
 {
-	ap.ssidnum = 1;
-	strcpy(&ap.ssid0.ssid[0], "jianxi-pri");
+	FILE *fp = fopen(path, "r");
+	if (!fp)
+		return -1;
 
-	return &ap;
+	size_t r = fread(buf, 1, buflen - 1, fp);
+	buf[r] = '\0';
+	fclose(fp);
+
+	/* Trim newline */
+	while (r > 0 && (buf[r-1] == '\n' || buf[r-1] == '\r'))
+		buf[--r] = '\0';
+
+	return (int)r;
+}
+
+/* ========================================================================
+ * Get WiFi interface name from UCI
+ * ======================================================================== */
+
+static void get_wifi_iface(char *buf, size_t buflen)
+{
+	char line[128];
+	FILE *fp = popen("uci get wireless.@wifi-iface[0].device 2>/dev/null || echo wifi0", "r");
+	if (!fp) {
+		strncpy(buf, "wifi0", buflen - 1);
+		return;
+	}
+	if (fgets(buf, (int)buflen, fp)) {
+		size_t len = strlen(buf);
+		while (len > 0 && (buf[len-1] == '\n' || buf[len-1] == '\r'))
+			buf[--len] = '\0';
+	}
+	pclose(fp);
+}
+
+/* ========================================================================
+ * Get current SSID
+ * ======================================================================== */
+
+static void get_ssid(char *ssid_buf, size_t ssid_len)
+{
+	char buf[128];
+	FILE *fp = popen("uci get wireless.@wifi-iface[0].ssid 2>/dev/null || echo ''", "r");
+	if (!fp) {
+		ssid_buf[0] = '\0';
+		return;
+	}
+	if (fgets(ssid_buf, (int)ssid_len, fp)) {
+		size_t len = strlen(ssid_buf);
+		while (len > 0 && (ssid_buf[len-1] == '\n' || ssid_buf[len-1] == '\r'))
+			ssid_buf[--len] = '\0';
+	}
+	pclose(fp);
+}
+
+/* ========================================================================
+ * Get number of associated clients
+ * ======================================================================== */
+
+static int get_associated_users(void)
+{
+	char buf[256];
+	/* Count associations via iw */
+	FILE *fp = popen("iw dev 2>/dev/null | grep -c 'Connected to' || echo 0", "r");
+	if (!fp)
+		return 0;
+	if (fgets(buf, sizeof(buf), fp)) {
+		pclose(fp);
+		return atoi(buf);
+	}
+	pclose(fp);
+	return 0;
+}
+
+/* ========================================================================
+ * Get uptime
+ * ======================================================================== */
+
+static unsigned long get_uptime_sec(void)
+{
+	char buf[64];
+	if (read_proc("/proc/uptime", buf, sizeof(buf)) > 0) {
+		return (unsigned long)atof(buf);
+	}
+	return 0;
+}
+
+/* ========================================================================
+ * Get free memory (KB)
+ * ======================================================================== */
+
+static unsigned long get_memfree_kb(void)
+{
+	char buf[256];
+	if (read_proc("/proc/meminfo", buf, sizeof(buf)) > 0) {
+		char *p = strstr(buf, "MemFree:");
+		if (p) {
+			unsigned long kb;
+			if (sscanf(p, "MemFree: %lu", &kb) == 1)
+				return kb;
+		}
+	}
+	return 0;
+}
+
+/* ========================================================================
+ * Get CPU usage (approximate via /proc/stat)
+ * ======================================================================== */
+
+static unsigned int get_cpu_percent(void)
+{
+	static unsigned long prev_total = 0;
+	static unsigned long prev_idle = 0;
+	char buf[256];
+	unsigned long user, nice, system, idle, iowait, irq, softirq;
+	unsigned long total, total_d, idle_d;
+	unsigned int pct;
+
+	if (read_proc("/proc/stat", buf, sizeof(buf)) <= 0)
+		return 0;
+
+	if (sscanf(buf, "cpu  %lu %lu %lu %lu %lu %lu %lu",
+		&user, &nice, &system, &idle, &iowait, &irq, &softirq) != 7)
+		return 0;
+
+	total = user + nice + system + idle + iowait + irq + softirq;
+	idle = idle + iowait;
+
+	total_d = total - prev_total;
+	idle_d = idle - prev_idle;
+
+	prev_total = total;
+	prev_idle = idle;
+
+	if (total_d == 0)
+		return 0;
+
+	pct = (unsigned int)((total_d - idle_d) * 100 / total_d);
+	if (pct > 100) pct = 100;
+
+	return pct;
+}
+
+/* ========================================================================
+ * Get cached or fresh status
+ * ======================================================================== */
+
+struct apstatus_t *get_apstatus(void)
+{
+	time_t now = time(NULL);
+
+	if (now - cache_time < CACHE_TTL)
+		return &cached_status;
+
+	memset(&cached_status, 0, sizeof(cached_status));
+
+	/* WiFi status */
+	get_wifi_iface(cached_status.ssid0.ssid, sizeof(cached_status.ssid0.ssid));
+	get_ssid(cached_status.ssid0.ssid, sizeof(cached_status.ssid0.ssid));
+
+	/* Signal strength — get from iw */
+	char sig_buf[32];
+	FILE *fp = popen("iw dev 2>/dev/null | grep 'signal:' | awk '{print $2}' | head -1", "r");
+	if (fp) {
+		if (fgets(sig_buf, sizeof(sig_buf), fp))
+			cached_status.ssid0.power = atoi(sig_buf);
+		pclose(fp);
+	}
+
+	/* Number of associated users */
+	cached_status.ssidnum = get_associated_users();
+
+	/* Fallback SSID if none found */
+	if (cached_status.ssid0.ssid[0] == '\0') {
+		strncpy(cached_status.ssid0.ssid, "OpenWrt-AP",
+			sizeof(cached_status.ssid0.ssid) - 1);
+	}
+
+	cache_time = now;
+	return &cached_status;
+}
+
+/*
+ * get_uptime — return system uptime in seconds
+ */
+unsigned long get_uptime(void)
+{
+	return get_uptime_sec();
+}
+
+/*
+ * get_memfree — return free memory in KB
+ */
+unsigned long get_memfree(void)
+{
+	return get_memfree_kb();
+}
+
+/*
+ * get_cpu_usage — return CPU usage percentage
+ */
+unsigned int get_cpu_usage(void)
+{
+	return get_cpu_percent();
 }

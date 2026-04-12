@@ -1,0 +1,113 @@
+###############################################################################
+# AC Controller UCI Configuration
+# /etc/config/acctl
+#
+# This file is managed by UCI. Do not edit manually unless using UCI.
+# Access via LuCI: Administration → Network → AC Controller
+#
+# IMPORTANT: Set a strong password before starting the service!
+#   uci set acctl.@acctl[0].password='your_secure_password_here'
+#   uci commit acctl
+###############################################################################
+
+config acctl 'acctl'
+	option enabled     '1'
+	option interface   'br-lan'
+	option port        '7960'
+	option password    ''
+
+	# Broadcast probe interval in seconds (default: 30)
+	option brditv      '30'
+
+	# IP pool reload interval in seconds (default: 300 = 5 minutes)
+	option reschkitv   '300'
+
+	# Message processing interval in seconds (default: 3)
+	option msgitv      '3'
+
+	# Run as daemon (1=yes, 0=no)
+	option daemon      '1'
+
+	# Debug mode (1=yes, 0=no)
+	option debug       '0'
+
+###############################################################################
+# IP Address Pool Configuration
+# Managed via database: INSERT INTO resource VALUES ('192.168.100.1', '192.168.100.254', '255.255.255.0');
+###############################################################################
+
+###############################################################################
+# AP Default Configuration Template
+# Multiple profiles supported: profile 'office', 'warehouse', 'guest', etc.
+###############################################################################
+
+config node_default 'profile_office'
+	list    ssid      'Office-WiFi'
+	option  encryption 'psk2'
+	option  key       'changeme123'
+	option  channel_mode '11n'
+	option  channel   'auto'
+	option  signal    'auto'
+
+config node_default 'profile_guest'
+	list    ssid      'Guest-WiFi'
+	option  encryption 'psk2'
+	option  key       'guest_wifi_2024'
+	option  channel_mode '11g'
+	option  channel   '6'
+	option  signal    '80'
+
+###############################################################################
+# AP Pre-Configuration (MAC-based)
+# Apply specific settings to APs by their MAC address.
+###############################################################################
+
+# config node_setting
+#   option pre_device_mac  'AA:BB:CC:DD:EE:FF'
+#   option wifi_ssid      'Floor-1-AP'
+#   option device_latitude '39.9042'
+#   option device_longitude '116.4074'
+
+###############################################################################
+# Alarm Rules
+###############################################################################
+
+config alarm 'ap_offline'
+	option name       'AP Offline'
+	option level      '2'
+	option threshold  '1'
+	option window     '60'
+	option cooldown   '300'
+	option enabled    '1'
+
+config alarm 'signal_weak'
+	option name       'Signal Weak'
+	option level      '1'
+	option threshold  '-75'
+	option window     '300'
+	option cooldown   '600'
+	option enabled    '1'
+
+config alarm 'cpu_overload'
+	option name       'CPU Overload'
+	option level      '1'
+	option threshold  '90'
+	option window     '120'
+	option cooldown   '900'
+	option enabled    '1'
+
+config alarm 'memory_low'
+	option name       'Memory Low'
+	option level      '1'
+	option threshold  '85'
+	option window     '300'
+	option cooldown   '900'
+	option enabled    '1'
+
+config alarm 'user_overload'
+	option name       'User Overload'
+	option level      '1'
+	option threshold  '50'
+	option window     '60'
+	option cooldown   '3600'
+	option enabled    '0'

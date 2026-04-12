@@ -68,11 +68,13 @@ extern int debug;
 #define sys_debug(fmt, ...) 	__sys_log(SYSLOG_DEBUG, "DEBUG: "fmt, ##__VA_ARGS__)
 #define sys_lock(fmt, ...) 	__sys_log(SYSLOG_LOCK, "LOCK: "fmt, ##__VA_ARGS__)
 #define pure_info(fmt, ...) 	__sys_log2(fmt, ##__VA_ARGS__)
+#define sys_info(fmt, ...) 	__sys_log(SYSLOG_INFO, "INFO: "fmt, ##__VA_ARGS__)
 #else
 #define sys_warn(fmt, ...) 	NULL
 #define sys_debug(fmt, ...)  	NULL
 #define sys_lock(fmt, ...) 	NULL
 #define pure_info(fmt, ...) 	NULL
+#define sys_info(fmt, ...) 	NULL
 #endif
 
 #ifdef DEBUG

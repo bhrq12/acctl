@@ -3,15 +3,12 @@
  *
  *       Filename:  resource.c
  *
- *    Description:  
+ *    Description:  IP address pool management.
+ *                  Thread-safe IP allocation from a configurable pool.
  *
- *        Version:  1.0
- *        Created:  2014年10月24日 15时10分07秒
- *       Revision:  none
+ *        Version:  2.0
+ *        Created:  2026-04-12
  *       Compiler:  gcc
- *
- *         Author:  jianxi sun (jianxi), ycsunjane@gmail.com
- *   Organization:  
  *
  * ============================================================================
  */
@@ -22,123 +19,130 @@
 #include <string.h>
 #include <errno.h>
 #include <netinet/in.h>
-#include <linux/if_ether.h>
-
-#include <sys/socket.h>
 #include <arpa/inet.h>
 
 #include "log.h"
 #include "resource.h"
 #include "sql.h"
+#include "arg.h"
+#include "mjson.h"
 
 struct _ippool_t *ippool = NULL;
+struct resource_cfg_t resource;
+
+static const char *json_attrs[] = {
+	"ip_start", "ip_end", "ip_mask", NULL
+};
+
+/* ========================================================================
+ * IP allocation
+ * ======================================================================== */
 
 struct _ip_t *res_ip_alloc(struct sockaddr_in *addr, char *mac)
 {
-	assert(ippool != NULL);
+	if (!ippool)
+		return NULL;
 
-	if(!ippool->left && !list_empty(&ippool->pool)) {
-		sys_warn("No ip in pool\n");
+	struct _ip_t *new_ip = NULL;
+
+	LOCK(&ippool->lock);
+
+	if (!ippool->left && list_empty(&ippool->pool)) {
+		sys_warn("IP pool exhausted\n");
+		UNLOCK(&ippool->lock);
 		return NULL;
 	}
 
-	struct _ip_t *new;
-alloc_new:
-	if(addr == NULL || addr->sin_addr.s_addr == 0) {
-		LOCK(&ippool->lock);
-		new = list_first_entry(&ippool->pool, 
-			struct _ip_t, list);
-		memcpy(new->apmac, mac, ETH_ALEN);
-		list_move(&new->list, &ippool->alloc);
-		ippool->left--;
-		UNLOCK(&ippool->lock);
-		return new;
-	} else {
-		/* if specify addr will alloc addr first */
-		LOCK(&ippool->lock);
-		list_for_each_entry(new, &ippool->pool, list) {
-			if((addr->sin_addr.s_addr ==
-					new->ipv4.sin_addr.s_addr)) {
-				list_move(&new->list, &ippool->alloc);
-				memcpy(new->apmac, mac, ETH_ALEN);
+alloc_from_pool:
+	/* If addr is specified and valid, try to allocate that specific IP */
+	if (addr && addr->sin_addr.s_addr != 0) {
+		list_for_each_entry(new_ip, &ippool->pool, list) {
+			if (new_ip->ipv4.sin_addr.s_addr == addr->sin_addr.s_addr) {
+				list_move(&new_ip->list, &ippool->alloc);
+				memcpy(new_ip->apmac, mac, ETH_ALEN);
 				ippool->left--;
 				UNLOCK(&ippool->lock);
-				return new;
+				sys_debug("Allocated requested IP: %s\n",
+					inet_ntoa(new_ip->ipv4.sin_addr));
+				return new_ip;
 			}
 		}
-		UNLOCK(&ippool->lock);
-
-		/* have no addr */
-		addr = NULL;
-		goto alloc_new;
+		/* Requested IP not in pool — fall through to auto-allocate */
 	}
 
-	return NULL;
-}
+	/* Auto-allocate from available pool (FIFO) */
+	if (!list_empty(&ippool->pool)) {
+		new_ip = list_first_entry(&ippool->pool, struct _ip_t, list);
+		list_move(&new_ip->list, &ippool->alloc);
+		memcpy(new_ip->apmac, mac, ETH_ALEN);
+		ippool->left--;
+		UNLOCK(&ippool->lock);
+		sys_debug("Auto-allocated IP: %s (pool left: %d)\n",
+			inet_ntoa(new_ip->ipv4.sin_addr), ippool->left);
+		return new_ip;
+	}
 
-static int 
-addrequ(struct sockaddr_in *src, struct sockaddr_in *dest)
-{
-	if(src->sin_addr.s_addr == dest->sin_addr.s_addr)
-		return 1;
-	return 0;
+	/* No IPs available */
+	if (new_ip == NULL) {
+		sys_warn("No available IPs in pool\n");
+	}
+	UNLOCK(&ippool->lock);
+	return NULL;
 }
 
 int res_ip_conflict(struct sockaddr_in *addr, char *mac)
 {
-	assert(ippool != NULL);
-
-	if(addr->sin_addr.s_addr == 0)
+	if (!ippool || !addr || addr->sin_addr.s_addr == 0)
 		return 0;
 
-	int ret = 0;
-	struct _ip_t *ip;
 	LOCK(&ippool->lock);
+	struct _ip_t *ip;
+
 	list_for_each_entry(ip, &ippool->alloc, list) {
-		if(addrequ(&ip->ipv4, addr)) { 
-			if(memcmp(mac, ip->apmac, ETH_ALEN))
-				ret = 1;
-			else
-				ret = 0;
-			goto end;
+		if (ip->ipv4.sin_addr.s_addr == addr->sin_addr.s_addr) {
+			int conflict = memcmp(mac, ip->apmac, ETH_ALEN) != 0;
+			UNLOCK(&ippool->lock);
+			return conflict;
 		}
 	}
-end:
+
 	UNLOCK(&ippool->lock);
-	return ret;
+	return 0;
 }
 
 static int res_ip_repeat(struct sockaddr_in *addr)
 {
-	assert(ippool != NULL);
+	if (!ippool)
+		return 0;
 
 	struct _ip_t *pos;
 
 	list_for_each_entry(pos, &ippool->pool, list) {
-		if(addrequ(&pos->ipv4, addr))
+		if (pos->ipv4.sin_addr.s_addr == addr->sin_addr.s_addr)
 			return 1;
 	}
 
 	list_for_each_entry(pos, &ippool->alloc, list) {
-		if(addrequ(&pos->ipv4, addr))
+		if (pos->ipv4.sin_addr.s_addr == addr->sin_addr.s_addr)
 			return 1;
 	}
+
 	return 0;
 }
 
 int res_ip_add(struct sockaddr_in *addr)
 {
-	assert(ippool != NULL);
+	if (!ippool)
+		return -1;
 
 	LOCK(&ippool->lock);
-	if(res_ip_repeat(addr)) 
+
+	if (res_ip_repeat(addr))
 		goto err;
 
-	struct _ip_t *ip = 
-		calloc(1, sizeof(struct _ip_t));
-	if(!ip) {
-		sys_err("Calloc ip_t failed: %s(%d)\n", 
-			strerror(errno), errno);
+	struct _ip_t *ip = calloc(1, sizeof(struct _ip_t));
+	if (!ip) {
+		sys_err("calloc for IP record failed: %s\n", strerror(errno));
 		goto err;
 	}
 
@@ -146,26 +150,33 @@ int res_ip_add(struct sockaddr_in *addr)
 	list_add_tail(&ip->list, &ippool->pool);
 	ippool->total++;
 	ippool->left++;
+
 	UNLOCK(&ippool->lock);
 	return 0;
+
 err:
 	UNLOCK(&ippool->lock);
 	return -1;
 }
 
-void res_ip_clear()
+void res_ip_clear(void)
 {
-	assert(ippool != NULL);
-
-	struct _ip_t *pos, *tmp;
+	if (!ippool)
+		return;
 
 	LOCK(&ippool->lock);
 
-	list_for_each_entry_safe(pos, tmp, &ippool->pool, list)
-		free(pos);
+	struct _ip_t *pos, *tmp;
 
-	list_for_each_entry_safe(pos, tmp, &ippool->alloc, list)
+	list_for_each_entry_safe(pos, tmp, &ippool->pool, list) {
+		list_del(&pos->list);
 		free(pos);
+	}
+
+	list_for_each_entry_safe(pos, tmp, &ippool->alloc, list) {
+		list_del(&pos->list);
+		free(pos);
+	}
 
 	ippool->total = 0;
 	ippool->left = 0;
@@ -173,115 +184,163 @@ void res_ip_clear()
 	UNLOCK(&ippool->lock);
 }
 
-static void res_ip_init()
+static void res_ip_init(void)
 {
-	assert(ippool == NULL);
 	ippool = calloc(1, sizeof(struct _ippool_t));
-	if(ippool == NULL) {
-		sys_err("Calloc memory for ip pool failed: %s(%d)\n", 
-			strerror(errno), errno);
+	if (!ippool) {
+		sys_err("calloc for IP pool failed: %s\n", strerror(errno));
 		exit(-1);
 	}
 
 	LOCK_INIT(&ippool->lock);
 	INIT_LIST_HEAD(&ippool->pool);
 	INIT_LIST_HEAD(&ippool->alloc);
-	return;
+	ippool->total = 0;
+	ippool->left = 0;
 }
 
-static int res_ip_equ_bak()
+/* ========================================================================
+ * Pool reload from database
+ * ======================================================================== */
+
+static int res_ip_equ_bak(void)
 {
-	if(strcmp(resource.ip_start, resource.bak_start) ||
-		strcmp(resource.ip_end, resource.bak_end) ||
-		strcmp(resource.ip_mask, resource.bak_mask)) {
+	if (strcmp(resource.ip_start, resource.bak_start) ||
+		strcmp(resource.ip_end,   resource.bak_end)   ||
+		strcmp(resource.ip_mask,  resource.bak_mask)) {
 		strcpy(resource.bak_start, resource.ip_start);
-		strcpy(resource.bak_end, resource.ip_end);
-		strcpy(resource.bak_mask, resource.ip_mask); 
+		strcpy(resource.bak_end,   resource.ip_end);
+		strcpy(resource.bak_mask,  resource.ip_mask);
 		return 0;
 	}
-	return 1;
+	return 1;  /* same as backup, no need to reload */
 }
 
-#define HTONL(s, d) (d = htonl(s))
-#define NTOHL(s, d) (d = ntohl(s))
-void res_ip_reload()
+void res_ip_reload(void)
 {
-	if(!strcmp(resource.ip_start, SQL_NULL) ||
-		!strcmp(resource.ip_end, SQL_NULL) ||
-		!strcmp(resource.ip_mask, SQL_NULL)) {
-		sys_err("Resource ip error\n");
+	char buffer[1024];
+
+	/* Read resource config from database */
+	if (sql_query_res(sql, buffer, sizeof(buffer)) != 0) {
+		sys_err("Failed to read resource from database\n");
 		return;
 	}
 
-	struct in_addr ipstart, ipend, ipmask;
-	if(!inet_aton(resource.ip_start, &ipstart) ||
-		!inet_aton(resource.ip_end, &ipend) ||
-		!inet_aton(resource.ip_mask, &ipmask)) {
-		sys_err("Resource ip error\n");
+	int status = json_read_object(buffer, json_attrs, NULL);
+	if (status != 0) {
+		sys_err("Failed to parse resource JSON: %s\n",
+			json_error_string(status));
 		return;
 	}
-	if(res_ip_equ_bak()) return;
 
-	sys_debug("start: %s, end: %s, mask: %s\n", 
+	/* Check if pool changed */
+	if (res_ip_equ_bak())
+		return;  /* no change */
+
+	sys_info("IP pool config changed, reloading...\n");
+	sys_info("  Pool: %s - %s / %s\n",
 		resource.ip_start, resource.ip_end, resource.ip_mask);
 
-	NTOHL(ipstart.s_addr, ipstart.s_addr);
-	NTOHL(ipend.s_addr, ipend.s_addr);
-	NTOHL(ipmask.s_addr, ipmask.s_addr);
+	struct in_addr ipstart, ipend, ipmask;
 
-	int num = (ipend.s_addr & ~ipmask.s_addr) - 
-		(ipstart.s_addr & ~ipmask.s_addr) + 1;
-	if(num <= 0) {
-		sys_warn("Resource ip error\n");
+	if (!inet_aton(resource.ip_start, &ipstart) ||
+		!inet_aton(resource.ip_end,   &ipend)   ||
+		!inet_aton(resource.ip_mask,  &ipmask)) {
+		sys_err("Invalid IP pool config: %s / %s / %s\n",
+			resource.ip_start, resource.ip_end, resource.ip_mask);
 		return;
-	} 
-
-	int i;
-	struct sockaddr_in addr, tmp;
-	/* skip net addr */
-	if(!(ipstart.s_addr & (~ipmask.s_addr))) {
-		ipstart.s_addr++;
-		num--;
 	}
 
-	/* skip broadcast addr */
-	if((ipend.s_addr & (~ipmask.s_addr)) == (~ipmask.s_addr))
-		num--;
+	uint32_t start_n = ntohl(ipstart.s_addr);
+	uint32_t end_n   = ntohl(ipend.s_addr);
+	uint32_t mask_n  = ntohl(ipmask.s_addr);
 
-	addr.sin_addr.s_addr =  ipstart.s_addr;
+	uint32_t net_bits = ~mask_n;
+	uint32_t start_host = start_n & mask_n;
+	uint32_t end_host   = end_n   & mask_n;
+
+	if (end_host <= start_host || net_bits == 0) {
+		sys_warn("Invalid IP range\n");
+		return;
+	}
+
+	int num = (int)(end_host - start_host + 1);
+
+	/* Skip network address */
+	if (start_host == 0)
+		start_host++;
+
+	/* Skip broadcast address */
+	uint32_t max_host = net_bits;
+	if (end_host >= max_host)
+		end_host = max_host - 1;
+
+	num = (int)(end_host - start_host + 1);
+	if (num <= 0) {
+		sys_warn("No usable IPs in pool\n");
+		return;
+	}
 
 	res_ip_clear();
-	for(i = 0; i < num; i++, addr.sin_addr.s_addr++) {
-		HTONL(addr.sin_addr.s_addr, tmp.sin_addr.s_addr);
-		sys_debug("add %s\n", inet_ntoa(tmp.sin_addr));
-		res_ip_add(&tmp);
+
+	uint32_t cur = start_host;
+	char ip_str[INET_ADDRSTRLEN];
+	struct sockaddr_in addr;
+
+	for (int i = 0; i < num; i++) {
+		addr.sin_addr.s_addr = htonl((cur + i) | (start_n & mask_n));
+		inet_ntop(AF_INET, &addr.sin_addr, ip_str, sizeof(ip_str));
+		if (res_ip_add(&addr) != 0)
+			break;
 	}
+
+	sys_info("IP pool loaded: %d addresses\n", ippool->total);
 }
 
-static void *res_check(void *arg)
+/* ========================================================================
+ * Periodic pool refresh thread
+ * ======================================================================== */
+
+void *res_check(void *arg)
 {
-	static char buffer[1024];
-	int status;
-	while(1) {
-		sys_debug("load resource from mysql(next: %d)\n",
+	char buffer[1024];
+	(void)arg;
+
+	while (1) {
+		sys_debug("Checking IP pool from database (interval=%ds)\n",
 			argument.reschkitv);
 
-		sql_query_res(&sql, buffer, 1024);
-
-		status = json_read_object(buffer, json_attrs, NULL);
-		if (status != 0) {
-			sys_err("%s\n", json_error_string(status));
-			exit(-1);
+		if (sql_query_res(sql, buffer, sizeof(buffer)) == 0) {
+			int status = json_read_object(buffer, json_attrs, NULL);
+			if (status == 0) {
+				res_ip_reload();
+			} else {
+				sys_err("JSON parse error: %s\n",
+					json_error_string(status));
+			}
 		}
-		res_ip_reload();
 
 		sleep(argument.reschkitv);
 	}
+
 	return NULL;
 }
 
-void resource_init()
+/* ========================================================================
+ * Initialization
+ * ======================================================================== */
+
+void resource_init(void)
 {
+	/* Initialize pool structure */
 	res_ip_init();
+
+	/* Load initial pool from database */
+	res_ip_reload();
+
+	/* Start periodic refresh thread */
 	create_pthread(res_check, NULL);
+
+	sys_info("Resource manager initialized (total=%d, left=%d)\n",
+		ippool->total, ippool->left);
 }

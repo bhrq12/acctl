@@ -3,15 +3,12 @@
  *
  *       Filename:  process.c
  *
- *    Description:  
+ *    Description:  AP-side message processing.
+ *                  Handles AC broadcast, registration, commands.
  *
- *        Version:  1.0
- *        Created:  2014年08月26日 10时04分23秒
- *       Revision:  none
+ *        Version:  2.0
+ *        Created:  2026-04-12
  *       Compiler:  gcc
- *
- *         Author:  jianxi sun (jianxi), ycsunjane@gmail.com
- *   Organization:  
  *
  * ============================================================================
  */
@@ -22,6 +19,9 @@
 #include <sys/ioctl.h>
 #include <net/if.h>
 #include <assert.h>
+#include <string.h>
+#include <stdlib.h>
+#include <errno.h>
 
 #include "msg.h"
 #include "log.h"
@@ -33,314 +33,412 @@
 #include "thread.h"
 #include "process.h"
 #include "apstatus.h"
+#include "sec.h"
 
-#define SYSSTAT_LOCK() 	(pthread_mutex_lock(&sysstat.lock))
-#define SYSSTAT_UNLOCK() (pthread_mutex_unlock(&sysstat.lock))
+#define SYSSTAT_LOCK()    pthread_mutex_lock(&sysstat.lock)
+#define SYSSTAT_UNLOCK() pthread_mutex_unlock(&sysstat.lock)
 
-struct sysstat_t sysstat = {
+/* AP global state */
+struct sysstat_t {
+	char     acuuid[UUID_LEN];
+	char     dmac[ETH_ALEN];   /* AC's MAC address */
+	int      isreg;             /* 0=unregistered, 1=registered */
+	int      sock;              /* TCP socket to AC */
+	struct sockaddr_in server;  /* AC's IP address */
+	pthread_mutex_t lock;
+	time_t   last_brd;          /* timestamp of last broadcast received */
+};
+
+static struct sysstat_t sysstat = {
 	.acuuid = {0},
+	.dmac = {0},
 	.isreg = 0,
 	.sock = -1,
-	.dmac = {0},
+	.server = {0},
 	.lock = PTHREAD_MUTEX_INITIALIZER,
 };
 
-static void ac_reconnect()
-{
-	if(!sysstat.server.sin_addr.s_addr)
-		return;
-
-	int ret;
-	struct nettcp_t tcp;
-	SYSSTAT_LOCK();
-	/* other process have reconnect */
-	if(sysstat.sock >= 0)
-		goto unlock;
-
-	tcp.addr = sysstat.server;
-	ret = tcp_connect(&tcp);
-	if(ret < 0)
-		goto unlock;
-
-	pr_ipv4(&tcp.addr);
-	sysstat.sock = ret;
-	SYSSTAT_UNLOCK();
-	sys_debug("connect success: %d\n", sysstat.sock);
-	insert_sockarr(tcp.sock, __net_netrcv, NULL);
-	return;
-
-unlock:
-	SYSSTAT_UNLOCK();
-	return;
-}
-
-static void *report_apstatus(void *arg)
-{
-	int ret;
-	struct apstatus_t *ap;
-
-	int bufsize = sizeof(struct msg_ap_status_t) +
-		sizeof(struct apstatus_t);
-	char *buf = calloc(1, bufsize);
-	if(buf == 0) {
-		sys_err("Malloc for report apstatus failed:%s ", 
-			strerror(errno));
-		exit(-1);
-	}
-
-	int proto;
-	/* tcp do not use chap to protect */
-	fill_msg_header((void *)buf, MSG_AP_STATUS, NULL, 0);
-
-	/* ap will first connect remote ac, but if 
-	 * find local ac, ap will connect to local ac */
-	while(1) {
-		proto = (sysstat.sock >= 0) ? MSG_PROTO_TCP : MSG_PROTO_ETH;
-		if(proto == MSG_PROTO_ETH) {
-			ac_reconnect();
-			goto wait;
-		}
-
-		ap = get_apstatus();
-		memcpy(buf + sizeof(struct msg_ap_status_t),
-			ap, sizeof(struct apstatus_t));
-
-		ret = net_send(proto, sysstat.sock, 
-			sysstat.dmac, buf, bufsize);
-		if(ret <= 0 && proto == MSG_PROTO_TCP) {
-			ac_lost();
-			ac_reconnect();
-		}
-wait:
-		sys_debug("report ap status (next %d seconds later)\n", 
-			argument.reportitv);
-		sleep(argument.reportitv);
-	}
-	return NULL;
-}
-
-static int __uuid_equ(char *src, char *dest)
-{
-	return !strncmp(src, dest, UUID_LEN - 1);
-}
-
-/* XXX: only use in !reg stat,
- * there is impossible have 10 ac in local */
-#define LOCAL_AC_MAX 	(10)
+/* MAC → random challenge map (for CHAP) */
+#define LOCAL_AC_MAX  (16)
 struct mac_random_map_t {
 	uint32_t random;
 	char mac[ETH_ALEN];
+	time_t ts;
 };
-static struct mac_random_map_t random_map[LOCAL_AC_MAX] = {{0}};
+static struct mac_random_map_t random_map[LOCAL_AC_MAX];
+static int random_map_offset = 0;
+static pthread_mutex_t random_map_lock = PTHREAD_MUTEX_INITIALIZER;
 
-static int offset = 0;
-static uint32_t new_random(char *mac)
+/* ========================================================================
+ * Random challenge tracking (for CHAP verification)
+ * ======================================================================== */
+
+static uint32_t map_store_random(char *mac, uint32_t random)
 {
-	uint32_t random;
-	random_map[offset].random = chap_get_random();
-	memcpy(random_map[offset].mac, mac, ETH_ALEN);
-	random = random_map[offset].random;
-	offset = (offset + 1) % LOCAL_AC_MAX;
+	pthread_mutex_lock(&random_map_lock);
+	int slot = random_map_offset;
+	random_map[slot].random = random;
+	memcpy(random_map[slot].mac, mac, ETH_ALEN);
+	random_map[slot].ts = time(NULL);
+	random_map_offset = (random_map_offset + 1) % LOCAL_AC_MAX;
+	pthread_mutex_unlock(&random_map_lock);
 	return random;
 }
 
-static uint32_t get_random(char *mac)
+static uint32_t map_get_random(char *mac)
 {
-	int i, j;
-	/* offset should be check first */
-	for(i = offset - 1, j = 0; j < LOCAL_AC_MAX; i++, j++) {
-		if(!memcmp(mac, random_map[i % LOCAL_AC_MAX].mac, ETH_ALEN))
-			return random_map[i % LOCAL_AC_MAX].random;
+	pthread_mutex_lock(&random_map_lock);
+	uint32_t r = 0;
+	time_t now = time(NULL);
+	for (int i = 0; i < LOCAL_AC_MAX; i++) {
+		if (random_map[i].mac[0] != 0 &&
+			memcmp(random_map[i].mac, mac, ETH_ALEN) == 0 &&
+			now - random_map[i].ts < 300) {  /* 5 min window */
+			r = random_map[i].random;
+			break;
+		}
 	}
-	return 0;
+	pthread_mutex_unlock(&random_map_lock);
+	return r;
 }
 
-static void _proc_brd(struct msg_ac_brd_t *msg, int len, int proto)
+/* ========================================================================
+ * AC connection management
+ * ======================================================================== */
+
+static int ac_connect(void)
 {
-	/* send current ipv4 */
-	struct msg_ap_reg_t *resp = 
-		malloc(sizeof(struct msg_ap_reg_t));
-	if(resp == NULL) {
-		sys_warn("Malloc for response failed:%s\n", 
-			strerror(errno));
+	if (sysstat.server.sin_addr.s_addr == 0) {
+		return -1;
+	}
+
+	struct nettcp_t tcp;
+	tcp.addr = sysstat.server;
+	int sock = tcp_connect(&tcp);
+
+	if (sock >= 0) {
+		insert_sockarr(sock, __net_netrcv, NULL);
+		sys_debug("Connected to AC at %s:%d (sock=%d)\n",
+			inet_ntoa(sysstat.server.sin_addr),
+			ntohs(sysstat.server.sin_port), sock);
+	}
+
+	return sock;
+}
+
+static void ac_disconnect(void)
+{
+	SYSSTAT_LOCK();
+	if (sysstat.sock >= 0) {
+		delete_sockarr(sysstat.sock);
+		sysstat.sock = -1;
+	}
+	SYSSTAT_UNLOCK();
+}
+
+/* ========================================================================
+ * Status reporting
+ * ======================================================================== */
+
+static void *report_apstatus(void *arg)
+{
+	(void)arg;
+	struct apstatus_t *ap;
+	char *buf;
+	int bufsize;
+
+	/* Build status report buffer */
+	bufsize = (int)(sizeof(struct msg_ap_status_t) + sizeof(struct apstatus_t));
+	buf = calloc(1, (size_t)bufsize);
+	if (!buf) {
+		sys_err("calloc for status report failed: %s\n", strerror(errno));
+		return NULL;
+	}
+
+	fill_msg_header((void *)buf, MSG_AP_STATUS, NULL, 0);
+
+	while (1) {
+		int proto;
+		int ret;
+
+		SYSSTAT_LOCK();
+		int connected = (sysstat.sock >= 0);
+		SYSSTAT_UNLOCK();
+
+		if (connected) {
+			proto = MSG_PROTO_TCP;
+		} else {
+			/* Not connected — try reconnecting */
+			SYSSTAT_LOCK();
+			ac_disconnect();
+			int new_sock = ac_connect();
+			sysstat.sock = new_sock;
+			SYSSTAT_UNLOCK();
+			if (new_sock < 0) {
+				sleep(argument.reportitv);
+				continue;
+			}
+			proto = MSG_PROTO_TCP;
+		}
+
+		/* Gather AP status */
+		ap = get_apstatus();
+		if (ap) {
+			memcpy(buf + sizeof(struct msg_ap_status_t),
+				ap, sizeof(struct apstatus_t));
+		}
+
+		/* Send status via TCP (or ETH fallback) */
+		SYSSTAT_LOCK();
+		int sock = sysstat.sock;
+		SYSSTAT_UNLOCK();
+
+		ret = net_send(proto, sock, sysstat.dmac, buf, bufsize);
+
+		if (ret <= 0 && proto == MSG_PROTO_TCP) {
+			sys_debug("Status send failed, AC may be lost\n");
+			SYSSTAT_LOCK();
+			ac_disconnect();
+			sysstat.isreg = 0;
+			SYSSTAT_UNLOCK();
+		}
+
+		sleep(argument.reportitv);
+	}
+
+	/* Never reached */
+	return NULL;
+}
+
+/* ========================================================================
+ * AC broadcast handling (phase 1: registration discovery)
+ * ======================================================================== */
+
+static void proc_brd(struct msg_ac_brd_t *msg, int len)
+{
+	if ((size_t)len < sizeof(*msg)) {
+		sys_warn("Received truncated broadcast packet\n");
 		return;
 	}
 
-	/* generate random1 */
-	fill_msg_header((void *)resp, MSG_AP_REG, 
-		msg->header.acuuid, new_random(msg->header.mac));
-	resp->ipv4 = argument.addr;
+	SYSSTAT_LOCK();
+	int already_reg = sysstat.isreg;
+	char my_uuid[UUID_LEN];
+	strncpy(my_uuid, sysstat.acuuid, UUID_LEN - 1);
+	SYSSTAT_UNLOCK();
 
-	/* calculate chap: md5sum1 = packet + random0 + password */
-	chap_fill_msg_md5((void *)resp, sizeof(*resp), msg->header.random);
-	net_send(proto, -1, &msg->header.mac[0], 
-		(void *)resp, sizeof(struct msg_ap_reg_t));
-	free(resp);
-}
+	/* Store the AC's MAC for potential TCP connection */
+	SYSSTAT_LOCK();
+	memcpy(sysstat.dmac, msg->header.mac, ETH_ALEN);
+	SYSSTAT_UNLOCK();
 
-static void 
-_proc_brd_isreg(struct msg_ac_brd_t *msg, int len, int proto)
-{
-	if(!__uuid_equ(&msg->header.acuuid[0], &sysstat.acuuid[0])) {
-		if(__uuid_equ(&msg->takeover[0], &sysstat.acuuid[0])) {
-			if(sysstat.sock >= 0) {
-				close(sysstat.sock);
-				sysstat.sock = -1;
-			}
-			_proc_brd(msg, len, proto);
-		} else {
-			/* tell the broadcast ac, ap have reg in other ac */
-			struct msg_ap_resp_t *resp = 
-				malloc(sizeof(struct msg_ap_resp_t));
-			if(resp == NULL) {
-				sys_warn("Malloc for response failed:%s\n", 
-					strerror(errno));
-				return;
-			}
-			fill_msg_header(resp, MSG_AP_RESP, 
-				msg->header.acuuid, 
-				new_random(msg->header.mac));
+	if (!already_reg) {
+		/* Phase 1: Not registered — send registration request */
+		char *resp_buf = malloc(sizeof(struct msg_ap_reg_t));
+		if (!resp_buf) {
+			sys_err("malloc for registration failed: %s\n",
+				strerror(errno));
+			return;
+		}
 
-			/* calculate chap */
-			chap_fill_msg_md5(resp, sizeof(*resp), 
-				msg->header.random);
-			net_send(proto, -1, &msg->header.mac[0], 
-				(void *)resp, sizeof(struct msg_ap_resp_t));
-			free(resp);
+		uint32_t r1 = chap_get_random();
+		map_store_random(msg->header.mac, r1);
+
+		fill_msg_header((void *)resp_buf, MSG_AP_REG,
+			msg->header.acuuid, r1);
+
+		struct msg_ap_reg_t *reg = (void *)resp_buf;
+		reg->ipv4 = argument.addr;
+
+		/* Compute CHAP: md5sum1 = packet + random0_from_AC + password */
+		chap_fill_msg_md5((void *)resp_buf,
+			sizeof(struct msg_ap_reg_t), msg->header.random);
+
+		net_send(MSG_PROTO_ETH, -1, msg->header.mac,
+			resp_buf, (int)sizeof(struct msg_ap_reg_t));
+		free(resp_buf);
+
+		sys_debug("Sent AP_REG to AC "
+			MAC_FMT"\n",
+			msg->header.mac[0], msg->header.mac[1],
+			msg->header.mac[2], msg->header.mac[3],
+			msg->header.mac[4], msg->header.mac[5]);
+
+	} else {
+		/* Phase 2: Already registered
+		 * If this is a different AC broadcasting, handle takeover */
+		if (strncmp(msg->header.acuuid, my_uuid, UUID_LEN - 1) != 0) {
+			/* Check if we should switch ACs */
+			sys_warn("Received broadcast from different AC: "
+				"%.36s (mine: %.36s)\n",
+				msg->header.acuuid, my_uuid);
+			/* TODO: implement AC priority / failover logic */
 		}
 	}
 }
 
-/*
- * reponse_brd recv broadcast msg from ac and update sysstat
- * */
-static void proc_brd(struct msg_ac_brd_t *msg, int len, int proto)
-{
-	assert(proto == MSG_PROTO_ETH);
+/* ========================================================================
+ * Registration response handling
+ * ======================================================================== */
 
-	sys_debug("receive ac broadcast packet\n");
-	if(len < sizeof(*msg)) {
-		sys_err("receive error msg ac broadcast packet\n");
+static void proc_reg_resp(struct msg_ac_reg_resp_t *msg, int len)
+{
+	if ((size_t)len < sizeof(*msg)) {
+		sys_warn("Received truncated registration response\n");
 		return;
 	}
 
-	if(sysstat.isreg)
-		_proc_brd_isreg(msg, len, proto);
-	else
-		_proc_brd(msg, len, proto);
-}
-
-static int addr_equ(struct sockaddr_in *addr)
-{
-	if(addr->sin_addr.s_addr == argument.addr.sin_addr.s_addr)
-		return 1;
-	return 0;
-}
-
-static int setaddr(struct sockaddr *addr)
-{
-	struct ifreq req;
-	strncpy(req.ifr_name, argument.nic, IFNAMSIZ);
-	req.ifr_addr = *addr;
-	req.ifr_addr.sa_family = AF_INET;
-
-	sys_debug("Set client nic ip: %s, addr: %s\n", req.ifr_name, 
-		inet_ntoa(((struct sockaddr_in *)&req.ifr_addr)->sin_addr));
-
-	int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-	if(sockfd < 0) {
-		sys_err("Create socket failed: %s(%d)\n",
-			strerror(errno), errno);
-		return 0;
-	}
-
-	int ret;
-	ret = ioctl(sockfd, SIOCSIFADDR, &req);
-	if(ret < 0) {
-		sys_err("Set ap addr failed: %s(%d)\n",
-			strerror(errno), errno);
-		close(sockfd);
-		return 0;
-	}
-	close(sockfd);
-	return 1;
-}
-
-static void 
-proc_reg_resp(struct msg_ac_reg_resp_t *msg, int len, int proto)
-{
-	sys_debug("Receive ac reg response packet\n");
-	if(len < sizeof(*msg)) {
-		sys_err("Receive error msg ac reg response packet\n");
+	/* Verify CHAP: md5sum3 = packet + random1 + password */
+	uint32_t r1 = map_get_random(msg->header.mac);
+	if (chap_msg_cmp_md5((void *)msg, sizeof(*msg), r1) != 0) {
+		sys_err("Registration response CHAP verification failed\n");
 		return;
 	}
 
-	/* md5sum3 = packet + random1 + password */
-	if(chap_msg_cmp_md5((void *)msg, sizeof(*msg), 
-			get_random(msg->header.mac))) {
-		sys_err("ac reg response packet chap error\n");
-		return;
-	}
-
-	strncpy(sysstat.acuuid, msg->header.acuuid, UUID_LEN);
+	SYSSTAT_LOCK();
+	strncpy(sysstat.acuuid, msg->header.acuuid, UUID_LEN - 1);
 	memcpy(sysstat.dmac, msg->header.mac, ETH_ALEN);
-	if(msg->acaddr.sin_addr.s_addr)
-		sysstat.server = msg->acaddr;
-	if(msg->apaddr.sin_addr.s_addr) 
-		setaddr((void *)&msg->apaddr);
+	SYSSTAT_UNLOCK();
 
-	pr_ipv4(&msg->acaddr);
+	/* Set local IP address if assigned */
+	if (msg->apaddr.sin_addr.s_addr) {
+		struct ifreq req;
+		int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+		if (sockfd >= 0) {
+			memset(&req, 0, sizeof(req));
+			strncpy(req.ifr_name, argument.nic, IFNAMSIZ - 1);
+			req.ifr_addr = *(struct sockaddr *)&msg->apaddr;
+			req.ifr_addr.sa_family = AF_INET;
+			ioctl(sockfd, SIOCSIFADDR, &req);
+			close(sockfd);
+			sys_info("IP address set: %s\n",
+				inet_ntoa(msg->apaddr.sin_addr));
+		}
+	}
 
-	/* if have connect to remote ac, close it. 
-	 * and connect to local ac */
-	if(sysstat.sock >= 0)
-		close(sysstat.sock);
-
-	ac_reconnect();
+	/* Connect to AC via TCP */
+	SYSSTAT_LOCK();
+	ac_disconnect();
+	sysstat.server = msg->acaddr;
+	sysstat.server.sin_port = htons((uint16_t)argument.port);
+	sysstat.sock = ac_connect();
 	sysstat.isreg = 1;
+	SYSSTAT_UNLOCK();
+
+	sys_info("Registered with AC: %.36s (sock=%d)\n",
+		msg->header.acuuid, sysstat.sock);
 }
 
-static void __exec_cmd(struct msg_ac_cmd_t *cmd)
-{
-	sys_debug("receive ac command packet\n");
-	printf("cmd: %s\n", cmd->cmd);
-}
+/* ========================================================================
+ * Command execution (AC → AP)
+ * ======================================================================== */
 
-static int is_mine(struct msg_head_t *msg)
+static void proc_exec_cmd(struct msg_ac_cmd_t *cmd, int len)
 {
-	return 1;
-}
+	sys_debug("Received command from AC: %.80s\n",
+		cmd->cmd[0] ? cmd->cmd : "(empty)");
 
-void msg_proc(struct msg_head_t *msg, int len, int proto)
-{
-	if(!is_mine(msg))
+	/* Validate command before execution */
+	if (sec_validate_command(cmd->cmd) != 0) {
+		sys_warn("Command rejected by security policy: %.60s\n",
+			cmd->cmd);
 		return;
+	}
 
-	switch(msg->msg_type) {
+	/* Log the command */
+	sys_info("Executing command: %s\n", cmd->cmd);
+
+	/* Execute with output capture */
+	char output[1024];
+	int status = sec_exec_command(cmd->cmd, output, sizeof(output));
+	if (status == 0) {
+		sys_debug("Command output: %s\n",
+			output[0] ? output : "(no output)");
+	}
+	/* TODO: Send command result back to AC via TCP */
+	(void)status;
+}
+
+/* ========================================================================
+ * Message routing
+ * ======================================================================== */
+
+void msg_proc(void *data, int len, int proto)
+{
+	struct msg_head_t *head = data;
+
+	switch (head->msg_type) {
+
 	case MSG_AC_BRD:
-		proc_brd((void *)msg, len, proto);
+		proc_brd((void *)data, len);
 		break;
+
 	case MSG_AC_REG_RESP:
-		proc_reg_resp((void *)msg, len, proto);
+		proc_reg_resp((void *)data, len);
 		break;
+
 	case MSG_AC_CMD:
-		__exec_cmd((struct msg_ac_cmd_t *)msg);
+		proc_exec_cmd((void *)data, len);
 		break;
+
 	default:
+		sys_warn("Unknown message type: %d\n", head->msg_type);
 		break;
 	}
 }
 
-void ac_lost()
+/* ========================================================================
+ * Network layer receive callback (TCP)
+ * ======================================================================== */
+
+void *__net_netrcv(void *arg)
 {
-	sys_debug("ac lost\n");
-	delete_sockarr(sysstat.sock);
-	sysstat.sock = -1;
+	struct sockarr_t *sa = arg;
+	char buf[NET_PKT_DATALEN];
+
+	if ((sa->retevents & EPOLLRDHUP) ||
+		(sa->retevents & EPOLLERR) ||
+		(sa->retevents & EPOLLHUP)) {
+		sys_debug("TCP connection to AC lost\n");
+		SYSSTAT_LOCK();
+		sysstat.sock = -1;
+		sysstat.isreg = 0;
+		SYSSTAT_UNLOCK();
+		delete_sockarr(sa->sock);
+		return NULL;
+	}
+
+	if (!(sa->retevents & EPOLLIN))
+		return NULL;
+
+	struct nettcp_t tcp;
+	tcp.sock = sa->sock;
+	int rcvlen = tcp_rcv(&tcp, buf, sizeof(buf));
+	if (rcvlen <= 0) {
+		SYSSTAT_LOCK();
+		sysstat.sock = -1;
+		sysstat.isreg = 0;
+		SYSSTAT_UNLOCK();
+		delete_sockarr(sa->sock);
+		return NULL;
+	}
+
+	msg_proc(buf, rcvlen, MSG_PROTO_TCP);
+	return NULL;
 }
 
-void init_report()
+/* ========================================================================
+ * Initialization
+ * ======================================================================== */
+
+void init_report(void)
 {
-	/* init remote ac address */
+	SYSSTAT_LOCK();
 	sysstat.server = argument.acaddr;
+	sysstat.server.sin_port = htons((uint16_t)argument.port);
+	SYSSTAT_UNLOCK();
+
 	create_pthread(report_apstatus, NULL);
+	sys_debug("Status reporting thread started (interval=%ds)\n",
+		argument.reportitv);
 }

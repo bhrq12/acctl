@@ -1,114 +1,78 @@
 /*
  * ============================================================================
- *
  *       Filename:  net.c
- *
- *    Description:  
- *
- *        Version:  1.0
- *        Created:  08/26/14 14:18:52
- *       Revision:  none
- *       Compiler:  gcc
- *
- *         Author:  jianxi sun (jianxi), ycsunjane@gmail.com
- *   Organization:  
- *
+ *       Description:  AP-side network layer — datalink receive
  * ============================================================================
  */
 #include <stdio.h>
-#include <stdint.h>
 #include <stdlib.h>
-#include <arpa/inet.h>
 #include <string.h>
-#include <errno.h>
-#include <assert.h>
+#include <unistd.h>
 #include <linux/if_ether.h>
 
-#include "message.h"
 #include "dllayer.h"
-#include "netlayer.h"
 #include "log.h"
-#include "thread.h"
+#include "msg.h"
 #include "arg.h"
-#include "link.h"
+#include "thread.h"
 #include "process.h"
+#include "link.h"
 
-/* recv dllayer */
-static void *net_dllrecv(void *arg)
+/*
+ * Datalink layer receive callback.
+ * This function is registered with epoll and called when ETH packets arrive.
+ * ETH packets are always MSG_AC_BRD (AC broadcast probe).
+ */
+static void *__net_dllrecv(void *arg)
 {
-	struct message_t *msg;
-	int rcvlen;
+	(void)arg;
 
-	msg = malloc(sizeof(struct message_t) + 
-		DLL_PKT_DATALEN);
-	if(msg == NULL) {
-		sys_warn("malloc memory for dllayer failed: %s\n", 
-			strerror(errno));
-		goto err;
-	}
-
-	rcvlen = dll_rcv(msg->data, DLL_PKT_DATALEN);
-	if(rcvlen < (int)sizeof(struct ethhdr)) {
-		free(msg);
-		goto err;
-	}
-	msg->len = rcvlen;
-	msg->proto = MSG_PROTO_ETH;
-	message_insert(msg);
-err:
-	return NULL;
-}
-
-/* recv netlayer */
-void *__net_netrcv(void *arg)
-{
-	struct sockarr_t *sockarr = arg;
-	unsigned int events = sockarr->retevents;
-	int clisock = sockarr->sock;
-
-	if(events & EPOLLRDHUP ||
-		events & EPOLLERR ||
-		events & EPOLLHUP) {
-		sys_debug("Epool get err: %s(%d)\n", strerror(errno), errno);
-		ac_lost();
+	char *buf = malloc(DLL_PKT_DATALEN);
+	if (!buf) {
+		sys_err("malloc for ETH recv failed: %s\n", strerror(errno));
 		return NULL;
 	}
 
-	struct message_t *msg;
-	msg = malloc(sizeof(struct message_t) + NET_PKT_DATALEN);
-	if(msg == NULL) {
-		sys_warn("malloc memory for dllayer failed: %s\n", 
-			strerror(errno));
-		goto err;
+	int rcvlen = dll_rcv(buf, DLL_PKT_DATALEN);
+	if (rcvlen <= 0) {
+		free(buf);
+		return NULL;
 	}
 
-	int rcvlen;
-	struct nettcp_t tcp;
-	tcp.sock = clisock;
-	rcvlen = tcp_rcv(&tcp, msg->data, NET_PKT_DATALEN);
-	if(rcvlen <= 0) {
-		ac_lost();
-		free(msg);
-		goto err;
+	if ((size_t)rcvlen < sizeof(struct msg_head_t)) {
+		sys_warn("Truncated ETH packet received (len=%d)\n", rcvlen);
+		free(buf);
+		return NULL;
 	}
-	msg->len = rcvlen;
-	msg->proto = MSG_PROTO_TCP;
-	message_insert(msg);
-err:
+
+	struct msg_head_t *head = (void *)buf;
+
+	/* Only process AC broadcast probe messages on ETH */
+	if (head->msg_type == MSG_AC_BRD) {
+		/* Pass directly to message processor (single-threaded AP model) */
+		msg_proc(buf, rcvlen, MSG_PROTO_ETH);
+	}
+
+	free(buf);
 	return NULL;
 }
 
-void net_init()
+void net_init(void)
 {
 	int sock;
-	/* init epoll */
+
+	/* Initialize epoll */
 	net_epoll_init();
-	
-	dll_init(&argument.nic[0], &sock, NULL, NULL);
-	insert_sockarr(sock, net_dllrecv, NULL);
 
-	/* create pthread recv msg */
-	create_pthread(net_recv, head);
-	sys_debug("Create pthread recv dllayer msg\n");
+	/* Initialize datalink layer and get receive socket */
+	dll_init(argument.nic, &sock, NULL, NULL);
+
+	/* Register ETH receive socket with epoll */
+	insert_sockarr(sock, __net_dllrecv, NULL);
+
+	/* Start the epoll event loop thread */
+	create_pthread(net_recv, NULL);
+
+	sys_debug("AP network layer initialized (nic=%s, ETH proto=0x%04x)\n",
+		argument.nic, (unsigned int)ETH_INNO);
 }
-

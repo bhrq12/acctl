@@ -1,0 +1,10 @@
+<% local level = self.map:get(self.section, "level") or 0 %>
+<% if level == "3" then %>
+<span style="background:#dc3545;color:white;padding:2px 8px;border-radius:3px;font-weight:bold">CRITICAL</span>
+<% elseif level == "2" then %>
+<span style="background:#fd7e14;color:white;padding:2px 8px;border-radius:3px">ERROR</span>
+<% elseif level == "1" then %>
+<span style="background:#ffc107;color:#333;padding:2px 8px;border-radius:3px">WARNING</span>
+<% else %>
+<span style="background:#17a2b8;color:white;padding:2px 8px;border-radius:3px">INFO</span>
+<% end %>

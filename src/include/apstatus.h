@@ -1,27 +1,16 @@
 /*
  * =====================================================================================
- *
  *       Filename:  apstatus.h
- *
- *    Description:  
- *
- *        Version:  1.0
- *        Created:  2014年09月01日 15时28分40秒
- *       Revision:  none
- *       Compiler:  gcc
- *
- *         Author:  jianxi sun (jianxi), ycsunjane@gmail.com
- *   Organization:  
- *
  * =====================================================================================
  */
 #ifndef __APSTATUS_H__
 #define __APSTATUS_H__
-#define SSID_MAXLEN 	(256)
+
+#define SSID_MAXLEN  256
 
 struct ssid_t {
 	char ssid[SSID_MAXLEN];
-	int  power;
+	int  power;        /* signal strength in dBm */
 };
 
 struct apstatus_t {
@@ -31,5 +20,9 @@ struct apstatus_t {
 	struct ssid_t ssid2;
 };
 
-struct apstatus_t *get_apstatus();
+struct apstatus_t *get_apstatus(void);
+unsigned long get_uptime(void);
+unsigned long get_memfree(void);
+unsigned int  get_cpu_usage(void);
+
 #endif /* __APSTATUS_H__ */

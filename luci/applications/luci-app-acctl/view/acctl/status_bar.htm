@@ -1,0 +1,53 @@
+<%#
+AC Controller — Status Bar Template
+This template shows real-time status in the LuCI header area.
+%>
+<div id="ac_status_widget" style="
+    display:inline-block;
+    padding:2px 12px;
+    margin-left:12px;
+    background:#f0f0f0;
+    border-radius:12px;
+    font-size:12px;
+    vertical-align:middle;
+    cursor:pointer;
+">
+    <span id="ac_status_dot" style="color:#28a745">●</span>
+    <span id="ac_status_text">AP: <span id="ac_online">--</span>/<span id="ac_total">--</span></span>
+    <span id="ac_alarm_count" style="color:#ffc107;margin-left:6px" title="Active Alarms">⚠ <span id="ac_alarms">--</span></span>
+</div>
+<script type="text/javascript">
+(function() {
+    function updateStatus() {
+        XHR.get('<%=controller%>/admin/network/acctl/status', null,
+            function(x, data) {
+                if (!data) return;
+                var dot = document.getElementById('ac_status_dot');
+                var online = document.getElementById('ac_online');
+                var total = document.getElementById('ac_total');
+                var alarms = document.getElementById('ac_alarms');
+                if (online) online.textContent = data.ap_online || 0;
+                if (total) total.textContent = data.ap_total || 0;
+                if (alarms) alarms.textContent = data.alarm_count || 0;
+                if (dot) {
+                    if (data.running) {
+                        dot.textContent = '●';
+                        dot.style.color = '#28a745';
+                    } else {
+                        dot.textContent = '○';
+                        dot.style.color = '#dc3545';
+                    }
+                }
+                if (alarms) {
+                    var a = data.alarm_count || 0;
+                    alarms.parentElement.style.color = (a > 0) ? '#dc3545' : '#ffc107';
+                }
+            }
+        );
+    }
+    window.addEventListener('load', function() {
+        updateStatus();
+        setInterval(updateStatus, 5000);
+    });
+})();
+</script>
