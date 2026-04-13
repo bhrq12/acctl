@@ -1,6 +1,6 @@
---[[
+﻿--[[
 LuCI - Lua Configuration Interface
-AC Controller — LuCI Controller Module
+AC Controller 鈥?LuCI Controller Module
 
 Licensed under the Apache License, Version 2.0
 http://www.apache.org/licenses/LICENSE-2.0
@@ -11,26 +11,36 @@ module("luci.controller.acctl", package.seeall)
 local sys   = require "luci.sys"
 local util   = require "luci.util"
 local http   = require "luci.http"
-local jsonc  = require "luci.jsonc"
 local uci    = require "luci.model.uci".cursor()
+
+-- Sanitize a string for safe shell injection in SQLite queries (defense-in-depth)
+local function sh_escape(s)
+	if not s then return "" end
+	return (tostring(s):gsub("[\\'\"$`]", "\\%0"))
+end
 
 local function is_running()
 	return sys.call("pgrep -x acser > /dev/null 2>&1") == 0
 end
 
+-- db_query: execute a SQL query and return the first result row as a string
 local function db_query(sql_stmt)
-	local f = io.popen("sqlite3 /etc/acctl/ac.db '%q' 2>/dev/null" % sql_stmt)
+	local safe_sql = sql_stmt:gsub("'", "''")
+	local cmd = "sqlite3 /etc/acctl/ac.db '" .. safe_sql .. "' 2>/dev/null"
+	local f = io.popen(cmd)
 	if not f then return "" end
 	local r = f:read("*a")
 	f:close()
-	-- Remove trailing newline
 	return (r:gsub("\n$", ""))
 end
 
+-- db_table: execute a SQL query and return all result rows as a table
 local function db_table(sql_stmt)
+	local safe_sql = sql_stmt:gsub("'", "''")
+	local cmd = "sqlite3 /etc/acctl/ac.db '" .. safe_sql .. "' 2>/dev/null"
+	local f = io.popen(cmd)
+	if not f then return {} end
 	local rows = {}
-	local f = io.popen("sqlite3 /etc/acctl/ac.db '%q' 2>/dev/null" % sql_stmt)
-	if not f then return rows end
 	for line in f:lines() do
 		if line and line ~= "" then
 			rows[#rows + 1] = line

@@ -91,7 +91,7 @@ struct msg_ac_cmd_t {
 	struct msg_head_t header;
 	/* Command string, null-terminated.
 	 * Maximum length: NET_PKT_DATALEN - sizeof(msg_ac_cmd_t) */
-	char  cmd[0];
+	char  cmd[];
 } __attribute__((packed));
 
 /* ========================================================================
@@ -132,7 +132,7 @@ struct msg_ap_reg_t {
 struct msg_ap_status_t {
 	struct msg_head_t header;
 	/* Followed immediately by struct apstatus_t (variable length) */
-	char  status[0];
+	char  status[];
 } __attribute__((packed));
 
 /* ========================================================================

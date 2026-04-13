@@ -42,7 +42,7 @@ extern int debug;
 	do { 													\
 		int __debug = 0; 										\
 		syslog(LEVEL, "(%u)%s +%d %s(): "fmt,  								\
-			(unsigned int)pthread_self(), __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__); 	\
+			(unsigned int)pthread_self(), __FILE__, __LINE__, __func__, ##__VA_ARGS__); 	\
 		switch(debug) { 										\
 		case ARG_DEBUG: 										\
 			__debug = (LEVEL == SYSLOG_DEBUG) ? 1: 0; 						\
@@ -58,7 +58,7 @@ extern int debug;
 		} 												\
 		if(__debug) 											\
 			fprintf(stderr, "(%u)%s +%d %s(): "fmt, 						\
-				(unsigned int)pthread_self(), __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__); \
+				(unsigned int)pthread_self(), __FILE__, __LINE__, __func__, ##__VA_ARGS__); \
 	} while(0)
 
 #define sys_err(fmt, ...) 	__sys_log(SYSLOG_ERR, "ERR: "fmt, ##__VA_ARGS__)

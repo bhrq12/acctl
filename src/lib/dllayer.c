@@ -39,7 +39,7 @@
 
 struct dlleth_t {
 	struct ethhdr 	hdr;
-	char 	data[0];
+	char 	data[];
 }__attribute__((packed));
 
 struct dllnic_t {

@@ -41,7 +41,7 @@ TARGET=
 export CC LD AR INSTALL TARGET
 
 INC = -I$(TOPDIR)/include
-CFLAGS = -Wall -Wno-unused-function -O0 $(INC)
+CFLAGS = -Wall -Wno-unused-function -O2 $(INC)
 CFLAGS += -g -DDEBUG
 LDFLAGS = -lpthread
 # SQLite dependencies
@@ -49,7 +49,7 @@ CFLAGS+=$(SQLITE_CFLAGS)
 LDFLAGS+=$(SQLITE_LIBS) -lsqlite3
 export CFLAGS LDFLAGS
 
-all:acser apcli test
+all: acser apctl
 
 
 LIB = libapctl.o
@@ -61,12 +61,8 @@ acser:
 	@$(MAKE) -C $(ACDIR)
 
 APDIR = $(TOPDIR)/ap
-apcli:
+apctl:
 	@$(MAKE) -C $(APDIR)
-
-TESTDIR = $(TOPDIR)/test
-test: FORCE
-	@$(MAKE) -C $(TESTDIR)
 
 tags: FORCE
 	@find  . -name "*.h" -o -name "*.c" -o -name "*.s" > cscope.files
@@ -74,11 +70,11 @@ tags: FORCE
 	@ctags -L cscope.files
 
 clean:
-	@rm -rf `find . -name "*.o"` $(ACDIR)/acser $(APDIR)/apctl
-	@rm -rf `find . -name "*.so"` 
-	@rm -rf $(TESTDIR)/dllser $(TESTDIR)/dllcli
-	@rm -rf cscope* tags
+	@find . -name "*.o" -delete
+	@find . -name "*.so" -delete
+	@rm -f $(ACDIR)/acser $(APDIR)/apctl
+	@rm -f cscope* tags
 FORCE:          
 	                
-PHONY += deps clean FORCE
+PHONY += clean FORCE
 .PHONY: $(PHONY)

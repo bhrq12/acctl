@@ -2,13 +2,12 @@
 #
 # AC Controller OpenWrt Init Script (procd)
 # /etc/init.d/acctl — starts AC server (acser)
-# /etc/init.d/apctl — starts AP client (apctl)
 #
 # This script is OpenWrt-standard:
-#   start  -> starts service via procd (respawn support)
-#   stop   -> kills service gracefully
-#   restart-> stop then start
-#   reload -> reload configuration (send SIGHUP)
+#   start_service() -> starts service via procd (respawn support)
+#   stop_service()  -> cleanup on stop
+#   reload_service() -> reload configuration (SIGHUP)
+#   service_triggers() -> procd config change trigger
 #
 # IMPORTANT: Configure password before first start:
 #   uci set acctl.@acctl[0].password='your_secure_password'
@@ -19,15 +18,14 @@ STOP=05
 USE_PROCD=1
 
 NAME_AC=acser
-NAME_AP=apctl
 PROG_AC=/usr/bin/acser
-PROG_AP=/usr/bin/apctl
 
 # UCI config path
 CONFIG_ACCTL=/etc/config/acctl
 
 # Load configuration values
 load_config() {
+	config_load acctl
 	config_get_bool enabled  acctl acctl enabled 1
 	config_get interface     acctl acctl interface br-lan
 	config_get port          acctl acctl port 7960
@@ -45,21 +43,6 @@ build_ac_args() {
 	args="$args -c $reschkitv"
 	args="$args -m $msgitv"
 	args="$args -b $brditv"
-	[ "$daemon" = "1" ] && args="$args -d"
-	[ "$debug" = "1" ] && args="$args -l 4"
-}
-
-# Build apctl command line arguments
-build_ap_args() {
-	config_get ac_domain acctl ap domain ""
-	config_get ap_port   acctl ap port 7960
-	config_get reportitv acctl ap reportitv 30
-
-	args="-n $interface"
-	args="$args -p $ap_port"
-	args="$args -r $reportitv"
-	args="$args -m $msgitv"
-	[ -n "$ac_domain" ] && args="$args -a $ac_domain"
 	[ "$daemon" = "1" ] && args="$args -d"
 	[ "$debug" = "1" ] && args="$args -l 4"
 }
@@ -86,9 +69,9 @@ check_prereq() {
 	return 0
 }
 
-# ---- AC Server (acser) ----
+# ---- procd service entry point ----
 
-start_service_ac() {
+start_service() {
 	config_load acctl
 	load_config
 
@@ -103,9 +86,11 @@ start_service_ac() {
 
 	procd_open_instance acser
 	procd_set_param command "$PROG_AC" $args
-	procd_set_param respawn            # auto-restart on crash
-	procd_set_param respawn_threshold 5  # restart if crashes >5 times in 60s
-	procd_set_param respawn_timeout 10  # wait 10s before restart
+	# procd_set_param respawn <threshold> <timeout> <retry_delay>
+	#   threshold: max crash count within timeout before giving up
+	#   timeout:   window in seconds for counting crashes
+	#   retry_delay: seconds to wait before restarting
+	procd_set_param respawn 3600 5 10
 	procd_set_param file "$CONFIG_ACCTL"
 	procd_set_param pidfile /var/run/acser.pid
 	procd_close_instance
@@ -113,10 +98,10 @@ start_service_ac() {
 	echo "AC Controller started (acser, port=$port)"
 }
 
-stop_service_ac() {
+stop_service() {
 	echo "Stopping AC Controller..."
 	[ -f /var/run/acser.pid ] && {
-		kill -TERM $(cat /var/run/acser.pid) 2>/dev/null
+		kill -TERM "$(cat /var/run/acser.pid)" 2>/dev/null
 		rm -f /var/run/acser.pid
 	}
 	# Also kill by name if pidfile missing
@@ -124,87 +109,19 @@ stop_service_ac() {
 	echo "AC Controller stopped"
 }
 
-reload_service_ac() {
+reload_service() {
 	echo "Reloading AC Controller configuration..."
 	[ -f /var/run/acser.pid ] && {
-		kill -HUP $(cat /var/run/acser.pid) 2>/dev/null
+		kill -HUP "$(cat /var/run/acser.pid)" 2>/dev/null
 	}
 }
 
-# ---- AP Client (apctl) ----
-
-start_service_ap() {
-	config_load acctl
-	load_config
-
-	# Check if AP mode is enabled
-	config_get_bool ap_enabled acctl ap enabled 0
-	[ "$ap_enabled" != "1" ] && {
-		echo "AP client mode is disabled"
-		return 1
-	}
-
-	[ -x "$PROG_AP" ] || {
-		echo "apctl not found at $PROG_AP"
-		return 1
-	}
-
-	build_ap_args
-
-	procd_open_instance apctl
-	procd_set_param command "$PROG_AP" $args
-	procd_set_param respawn
-	procd_set_param file "$CONFIG_ACCTL"
-	procd_set_param pidfile /var/run/apctl.pid
-	procd_close_instance
-
-	echo "AP client started (apctl)"
-}
-
-stop_service_ap() {
-	echo "Stopping AP client..."
-	[ -f /var/run/apctl.pid ] && {
-		kill -TERM $(cat /var/run/apctl.pid) 2>/dev/null
-		rm -f /var/run/apctl.pid
-	}
-	killall apctl 2>/dev/null
-	echo "AP client stopped"
-}
-
-# ---- Default service (acser) ----
-
-start() {
-	start_service_ac
-}
-
-stop() {
-	stop_service_ac
-	stop_service_ap
-}
-
-reload() {
-	reload_service_ac
-}
-
-restart() {
-	stop
-	start
-}
-
-# Service management via procd
 service_triggers() {
 	procd_add_config_trigger "config.change" "acctl" "/etc/init.d/acctl" reload
 }
 
-# ---- Convenience commands ----
+# ---- Convenience commands (callable as /etc/init.d/acctl status) ----
 
-# Start both AC and AP on same device (for testing)
-start_all() {
-	start_service_ac
-	start_service_ap
-}
-
-# Show status
 status() {
 	echo "=== AC Controller Status ==="
 	if pgrep -x acser > /dev/null 2>&1; then

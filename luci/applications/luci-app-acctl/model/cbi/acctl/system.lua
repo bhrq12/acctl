@@ -1,62 +1,100 @@
 --[[
-AC Controller — AP Groups
+AC Controller — System Information
 ]]--
 
 local sys = require "luci.sys"
-local util = require "luci.util"
+local fs  = require "nixio.fs"
 
-m = Map("acctl", translate("AP Groups"),
-	translate("Organize Access Points into groups for batch management"))
+m = Map("acctl", translate("System Information"),
+	translate("AC Controller runtime status and system information"))
 
-function get_groups()
-	local groups = {}
-	local cmd = "sqlite3 /etc/acctl/ac.db " ..
-		"'SELECT id,name,description,update_policy FROM ap_group' 2>/dev/null"
-	local output = sys.exec(cmd)
-	for row in output:gmatch("[^\r\n]+") do
-		local fields = util.split(row, "|")
-		if #fields >= 4 then
-			local id = tonumber(fields[1]) or 0
-			local ap_count = tonumber(sys.exec(string.format(
-				"sqlite3 /etc/acctl/ac.db " ..
-				"'SELECT COUNT(*) FROM node WHERE group_id=%d' 2>/dev/null", id))) or 0
-			table.insert(groups, {
-				id = id,
-				name = fields[2] or "",
-				description = fields[3] or "",
-				policy = fields[4] or "manual",
-				ap_count = ap_count
-			})
+-- Runtime status section
+s = m:section(NamedSection, "acctl", "acctl",
+	translate("Controller Status"))
+s.addremove = false
+s.anonymous = true
+
+-- Is the AC server running?
+local running = (sys.call("pgrep -x acser > /dev/null 2>&1") == 0)
+local status_text = running
+	and '<span style="color:#28a745;font-weight:bold">&#x25CF; Running</span>'
+	or  '<span style="color:#dc3545;font-weight:bold">&#x25CB; Stopped</span>'
+
+status = s:option(DummyValue, "_status", translate("Service Status"))
+status.rawhtml = true
+status.value = status_text
+
+-- AC UUID
+local uuid = sys.exec("cat /etc/acctl/ac.uuid 2>/dev/null")
+if uuid == "" then uuid = "N/A" end
+uuid_opt = s:option(DummyValue, "_uuid", translate("AC UUID"))
+uuid_opt.value = uuid
+
+-- System uptime
+local uptime = sys.exec("cat /proc/uptime 2>/dev/null")
+if uptime ~= "" then
+	uptime = string.format("%.1f hours", tonumber(uptime:match("^[%.%d]+")) / 3600)
+else
+	uptime = "N/A"
+end
+uptime_opt = s:option(DummyValue, "_uptime", translate("System Uptime"))
+uptime_opt.value = uptime
+
+-- Database statistics section
+s2 = m:section(NamedSection, "acctl", "acctl",
+	translate("Database Statistics"))
+s2.addremove = false
+s2.anonymous = true
+
+local db_path = "/etc/acctl/ac.db"
+local db_size = "N/A"
+if fs.access(db_path) then
+	local sz = tonumber(fs.stat(db_path, "size"))
+	if sz then
+		if sz > 1048576 then
+			db_size = string.format("%.1f MB", sz / 1048576)
+		elseif sz > 1024 then
+			db_size = string.format("%.1f KB", sz / 1024)
+		else
+			db_size = string.format("%d B", sz)
 		end
 	end
-	return groups
 end
 
-s = m:section(TypedSection, "ap_group", translate("Groups"),
-	translate("Create and manage AP groups"))
-s.anonymous = true
-s.addremove = true
+local ap_total    = tonumber(sys.exec(
+	"sqlite3 /etc/acctl/ac.db 'SELECT COUNT(*) FROM node' 2>/dev/null")) or 0
+local ap_online   = tonumber(sys.exec(
+	"sqlite3 /etc/acctl/ac.db 'SELECT COUNT(*) FROM node WHERE device_down=0' 2>/dev/null")) or 0
+local alarm_count = tonumber(sys.exec(
+	"sqlite3 /etc/acctl/ac.db 'SELECT COUNT(*) FROM alarm_event WHERE acknowledged=0' 2>/dev/null")) or 0
+local group_count = tonumber(sys.exec(
+	"sqlite3 /etc/acctl/ac.db 'SELECT COUNT(*) FROM ap_group' 2>/dev/null")) or 0
 
-name = s:option(Value, "name", translate("Group Name"))
-name.rmempty = false
+db_size_opt = s2:option(DummyValue, "_db_size", translate("Database Size"))
+db_size_opt.value = db_size
 
-desc = s:option(Value, "description", translate("Description"))
-desc.placeholder = translate("Optional description")
+ap_total_opt = s2:option(DummyValue, "_ap_total", translate("Total APs"))
+ap_total_opt.value = tostring(ap_total)
 
-policy = s:option(ListValue, "update_policy", translate("Update Policy"))
-policy:value("manual", translate("Manual (no auto-upgrade)"))
-policy:value("auto", translate("Auto (apply template on AP connect)"))
-policy:value("rolling", translate("Rolling (upgrade one at a time)"))
-policy.default = "manual"
+ap_online_opt = s2:option(DummyValue, "_ap_online", translate("Online APs"))
+ap_online_opt.value = tostring(ap_online)
 
--- Group member list
-s2 = m:section(Table, get_groups(),
-	translatef("Groups (%d)", #(get_groups())))
+alarm_opt = s2:option(DummyValue, "_alarms", translate("Active Alarms"))
+alarm_opt.value = tostring(alarm_count)
 
-s2:option(DummyValue, "id", translate("ID"))
-s2:option(DummyValue, "name", translate("Name"))
-s2:option(DummyValue, "description", translate("Description"))
-s2:option(DummyValue, "policy", translate("Policy"))
-s2:option(DummyValue, "ap_count", translate("AP Count"))
+group_opt = s2:option(DummyValue, "_groups", translate("AP Groups"))
+group_opt.value = tostring(group_count)
+
+-- Service control
+s3 = m:section(NamedSection, "acctl", "acctl",
+	translate("Service Control"))
+s3.addremove = false
+s3.anonymous = true
+
+restart_btn = s3:option(Button, "_restart", translate("Restart Controller"))
+restart_btn.inputstyle = "apply"
+function restart_btn.write(self, section)
+	sys.exec("/etc/init.d/acctl restart > /dev/null 2>&1")
+end
 
 return m

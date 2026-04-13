@@ -1,40 +1,84 @@
 #!/bin/sh /etc/rc.common
-# Convenience symlink: /etc/init.d/apctl → /etc/init.d/acctl
-# This just calls the AP-specific functions in acctl
+#
+# AP Client OpenWrt Init Script (procd)
+# /etc/init.d/apctl — starts AP client (apctl)
+#
+# This is a standalone procd service for the AP client.
+# It does NOT source /etc/init.d/acctl to avoid function conflicts.
 
 START=96
+STOP=10
 USE_PROCD=1
 
-NAME=apctl
+NAME_AP=apctl
+PROG_AP=/usr/bin/apctl
+CONFIG_ACCTL=/etc/config/acctl
 
-# Load shared functions from acctl
-. /etc/init.d/acctl
-
-stop_service() {
-	stop_service_ap
+# Load configuration values
+load_ap_config() {
+	config_load acctl
+	config_get_bool ap_enabled acctl ap enabled 0
+	config_get interface     acctl acctl interface br-lan
+	config_get msgitv        acctl acctl msgitv 3
+	config_get daemon        acctl acctl daemon 1
+	config_get_bool debug    acctl acctl debug 0
 }
 
+# Build apctl command line arguments
+build_ap_args() {
+	config_get ac_domain acctl ap domain ""
+	config_get ap_port   acctl ap port 7960
+	config_get reportitv acctl ap reportitv 30
+
+	args="-n $interface"
+	args="$args -p $ap_port"
+	args="$args -r $reportitv"
+	args="$args -m $msgitv"
+	[ -n "$ac_domain" ] && args="$args -a $ac_domain"
+	[ "$daemon" = "1" ] && args="$args -d"
+	[ "$debug" = "1" ] && args="$args -l 4"
+}
+
+# ---- procd service entry point ----
+
 start_service() {
-	start_service_ap
+	load_ap_config
+
+	[ "$ap_enabled" != "1" ] && {
+		echo "AP client mode is disabled"
+		return 1
+	}
+
+	[ -x "$PROG_AP" ] || {
+		echo "apctl not found at $PROG_AP"
+		return 1
+	}
+
+	build_ap_args
+
+	procd_open_instance apctl
+	procd_set_param command "$PROG_AP" $args
+	procd_set_param respawn 3600 5 10
+	procd_set_param file "$CONFIG_ACCTL"
+	procd_set_param pidfile /var/run/apctl.pid
+	procd_close_instance
+
+	echo "AP client started (apctl)"
+}
+
+stop_service() {
+	echo "Stopping AP client..."
+	[ -f /var/run/apctl.pid ] && {
+		kill -TERM "$(cat /var/run/apctl.pid)" 2>/dev/null
+		rm -f /var/run/apctl.pid
+	}
+	killall apctl 2>/dev/null
+	echo "AP client stopped"
 }
 
 reload_service() {
-	# AP reload = restart
-	stop_service_ap
-	start_service_ap
-}
-
-start() {
-	start_service_ap
-}
-
-stop() {
-	stop_service_ap
-}
-
-restart() {
-	stop
-	start
+	stop_service
+	start_service
 }
 
 service_triggers() {

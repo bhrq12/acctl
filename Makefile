@@ -8,8 +8,11 @@ PKG_BUILD_DIR:=$(KERNEL_BUILD_DIR)/$(PKG_NAME)
 
 PKG_CONFIG_DEPENDS:=
 
-PKG_BUILD_DEPENDS:=libsqlite3 libpthread
-PKG_INSTALL_DEPENDS:=libsqlite3 libpthread
+# Build dependencies use SOURCE package names (not binary package names).
+# sqlite3 is the OpenWrt feed source package; it produces libsqlite3.
+# libpthread is built into musl on modern OpenWrt — not a separate package.
+PKG_BUILD_DEPENDS:=sqlite3
+PKG_INSTALL_DEPENDS:=
 
 include $(INCLUDE_DIR)/package.mk
 
@@ -18,7 +21,7 @@ define Package/acctl
   CATEGORY:=Network
   SUBMENU:=Access Points/Controllers
   TITLE:=OpenWrt AC Controller v2.0
-  DEPENDS:=+libpthread +libsqlite3 +libuci-lua
+  DEPENDS:=+libsqlite3 +libuci-lua
   URL:=https://github.com/yourname/acctl
   MAINTAINER:=jianxi sun <ycsunjane@gmail.com>
 endef
@@ -36,29 +39,32 @@ define Package/acctl/description
   - Firmware OTA upgrade support
   - LuCI web management interface
 
-  Requires: OpenWrt 18.06+, libsqlite3, libpthread
+  Requires: OpenWrt 18.06+
 endef
 
 define Package/acctl/conffiles
 /etc/config/acctl
 endef
 
-# BuildPrepare copies all source files to $(PKG_BUILD_DIR)
+# BuildPrepare copies source into staging directory with proper layout:
+#   src/    -> $(PKG_BUILD_DIR)/src/
+#   luci/   -> $(PKG_BUILD_DIR)/luci/
+#   files/  -> $(PKG_BUILD_DIR)/files/
 define Build/Prepare
 	mkdir -p $(PKG_BUILD_DIR)
-	$(CP) ./src/* $(PKG_BUILD_DIR)/
-	$(CP) ./luci/* $(PKG_BUILD_DIR)/
-	$(CP) ./files/* $(PKG_BUILD_DIR)/
+	$(CP) ./src   $(PKG_BUILD_DIR)/
+	$(CP) ./luci  $(PKG_BUILD_DIR)/
+	$(CP) ./files $(PKG_BUILD_DIR)/
 endef
 
 define Build/Configure
 endef
 
 define Build/Compile
-	# Build shared library + both binaries
-	$(MAKE) -C $(PKG_BUILD_DIR)/lib \
+	# Build shared library + both binaries via the lib Makefile
+	$(MAKE) -C $(PKG_BUILD_DIR)/src/lib \
 		CC="$(TARGET_CC)" \
-		CFLAGS="$(TARGET_CFLAGS) -I$(PKG_BUILD_DIR)/include \
+		CFLAGS="$(TARGET_CFLAGS) -I$(PKG_BUILD_DIR)/src/include \
 			-I$(STAGING_DIR)/usr/include \
 			-DDEBUG -Wall -Wextra" \
 		LDFLAGS="$(TARGET_LDFLAGS) -L$(STAGING_DIR)/usr/lib \
@@ -68,12 +74,12 @@ endef
 
 define Package/acctl/install
 	$(INSTALL_DIR) $(1)/usr/bin
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/lib/acser $(1)/usr/bin/acser
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/lib/apctl $(1)/usr/bin/apctl
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lib/acser $(1)/usr/bin/acser
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lib/apctl $(1)/usr/bin/apctl
 
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/files/etc/init.d/acctl $(1)/etc/init.d/acctl
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/files/etc/init.d/acctl $(1)/etc/init.d/apctl
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/files/etc/init.d/apctl $(1)/etc/init.d/apctl
 	chmod 755 $(1)/etc/init.d/acctl
 	chmod 755 $(1)/etc/init.d/apctl
 
@@ -84,7 +90,7 @@ define Package/acctl/install
 	touch $(1)/etc/acctl/ac.db
 
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/controller
-	$(INSTALL_DATA) $(PKG_BUILD_DIR)/luci/applications/luci-app-acctl/controller/acctl.lua \
+	$(INSTALL_DATA) $(PKG_BUILD_DIR)/luci/applications/luci-app-acctl/luasrc/controller/acctl.lua \
 		$(1)/usr/lib/lua/luci/controller/acctl.lua
 
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/model/cbi/acctl
