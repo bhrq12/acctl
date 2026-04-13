@@ -1,9 +1,9 @@
 --[[
-AC Controller — System Information
-]]--
-
-local sys = require "luci.sys"
-local fs  = require "nixio.fs"
+AC Controller — System Information (JSON backend)
+]]
+local sys  = require "luci.sys"
+local fs   = require "nixio.fs"
+local http = require "luci.http"
 
 m = Map("acctl", translate("System Information"),
 	translate("AC Controller runtime status and system information"))
@@ -46,10 +46,47 @@ s2 = m:section(NamedSection, "acctl", "acctl",
 s2.addremove = false
 s2.anonymous = true
 
-local db_path = "/etc/acctl/ac.db"
+-- Read statistics from JSON file
+local json_path = "/etc/acctl/ac.json"
+local ap_total, ap_online, alarm_count, group_count = 0, 0, 0, 0
+
+local f = io.open(json_path, "r")
+if f then
+	local raw = f:read("*a")
+	f:close()
+
+	local ok, data = pcall(http.parse_json, raw)
+	if ok and data then
+		-- Count nodes
+		if data.nodes and type(data.nodes) == "table" then
+			ap_total = #data.nodes
+			for _, node in ipairs(data.nodes) do
+				if node.device_down == 0 or node.device_down == "0" then
+					ap_online = ap_online + 1
+				end
+			end
+		end
+
+		-- Count unacknowledged alarms
+		if data.alarm_events and type(data.alarm_events) == "table" then
+			for _, ev in ipairs(data.alarm_events) do
+				if ev.acknowledged == 0 or ev.acknowledged == "0" then
+					alarm_count = alarm_count + 1
+				end
+			end
+		end
+
+		-- Count groups
+		if data.ap_groups and type(data.ap_groups) == "table" then
+			group_count = #data.ap_groups
+		end
+	end
+end
+
+-- JSON file size
 local db_size = "N/A"
-if fs.access(db_path) then
-	local sz = tonumber(fs.stat(db_path, "size"))
+if fs.access(json_path) then
+	local sz = tonumber(fs.stat(json_path, "size"))
 	if sz then
 		if sz > 1048576 then
 			db_size = string.format("%.1f MB", sz / 1048576)
@@ -60,15 +97,6 @@ if fs.access(db_path) then
 		end
 	end
 end
-
-local ap_total    = tonumber(sys.exec(
-	"sqlite3 /etc/acctl/ac.db 'SELECT COUNT(*) FROM node' 2>/dev/null")) or 0
-local ap_online   = tonumber(sys.exec(
-	"sqlite3 /etc/acctl/ac.db 'SELECT COUNT(*) FROM node WHERE device_down=0' 2>/dev/null")) or 0
-local alarm_count = tonumber(sys.exec(
-	"sqlite3 /etc/acctl/ac.db 'SELECT COUNT(*) FROM alarm_event WHERE acknowledged=0' 2>/dev/null")) or 0
-local group_count = tonumber(sys.exec(
-	"sqlite3 /etc/acctl/ac.db 'SELECT COUNT(*) FROM ap_group' 2>/dev/null")) or 0
 
 db_size_opt = s2:option(DummyValue, "_db_size", translate("Database Size"))
 db_size_opt.value = db_size

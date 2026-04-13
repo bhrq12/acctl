@@ -44,9 +44,6 @@ INC = -I$(TOPDIR)/include
 CFLAGS = -Wall -Wno-unused-function -O2 $(INC)
 CFLAGS += -g -DDEBUG
 LDFLAGS = -lpthread
-# SQLite dependencies
-CFLAGS+=$(SQLITE_CFLAGS)
-LDFLAGS+=$(SQLITE_LIBS) -lsqlite3
 export CFLAGS LDFLAGS
 
 all: acser apctl

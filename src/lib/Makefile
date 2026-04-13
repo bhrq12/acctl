@@ -4,12 +4,12 @@
 # Also builds: acser (AC server) and apctl (AP client)
 #
 # Usage:
-#   make              — build everything
-#   make clean        — clean build artifacts
-#   make ac_lib      — build AC server library
-#   make ap_lib      — build AP client library
-#   make acser       — build AC server binary
-#   make apctl       — build AP client binary
+#   make              �?build everything
+#   make clean        �?clean build artifacts
+#   make ac_lib      �?build AC server library
+#   make ap_lib      �?build AP client library
+#   make acser       �?build AC server binary
+#   make apctl       �?build AP client binary
 #
 
 CC       ?= gcc
@@ -27,7 +27,7 @@ LIB_OBJS  = $(LIB_SRCS:.c=.o)
 
 # AC-specific sources
 AC_SRCS   = ../ac/main.c ../ac/process.c ../ac/net.c ../ac/message.c \
-            ../ac/resource.c ../ac/sql.c ../ac/aphash.c
+            ../ac/resource.c ../ac/db.c ../ac/aphash.c
 AC_OBJS   = $(AC_SRCS:.c=.o)
 
 # AP-specific sources
@@ -71,9 +71,13 @@ ap_lib:
 acser: dllayer.o netlayer.o arg.o cfgarg.o cmdarg.o mjson.o \
         chap.o md5.o link.o thread.o sec.o \
         ../ac/main.o ../ac/process.o ../ac/net.o ../ac/message.o \
-        ../ac/resource.o ../ac/sql.o ../ac/aphash.o
+        ../ac/resource.o ../ac/db.o ../ac/aphash.o
 	@echo "  Linking acser..."
-	$(CC) $(CFLAGS) -o $@ $^ -lsqlite3 -lpthread -lm
+	$(CC) $(CFLAGS) -o $@ $^ -lpthread -lm
+
+acctl-cli: ../ac/cli.o ../ac/db.o
+	@echo "  Linking acctl-cli..."
+	$(CC) $(CFLAGS) -I$(INC_DIR) -o $@ $^ -lpthread -lm
 	@echo "  acser built successfully."
 
 apctl: dllayer.o netlayer.o arg.o cfgarg.o cmdarg.o mjson.o \
@@ -131,7 +135,8 @@ mjson.o: mjson.c $(INC_DIR)/mjson.h
 	$(INC_DIR)/process.h
 ../ac/resource.o: ../ac/resource.c $(INC_DIR)/log.h $(INC_DIR)/resource.h \
 	$(INC_DIR)/sql.h $(INC_DIR)/mjson.h
-../ac/sql.o: ../ac/sql.c $(INC_DIR)/sql.h $(INC_DIR)/log.h $(INC_DIR)/mjson.h
+../ac/db.o: ../ac/db.c $(INC_DIR)/db.h $(INC_DIR)/log.h $(INC_DIR)/mjson.h $(INC_DIR)/resource.h
+../ac/cli.o: ../ac/cli.c $(INC_DIR)/db.h $(INC_DIR)/log.h
 ../ac/aphash.o: ../ac/aphash.c $(INC_DIR)/aphash.h $(INC_DIR)/log.h
 
 ../ap/main.o: ../ap/main.c $(INC_DIR)/arg.h $(INC_DIR)/message.h \

@@ -164,8 +164,8 @@ static void cleanup(void)
 	sys_info("Cleaning up resources...\n");
 
 	/* Close database */
-	if (sql)
-		sql_close(sql);
+	if (db)
+		db_close(db);
 
 	/* Clear IP pool */
 	if (ippool)
@@ -214,12 +214,12 @@ int main(int argc, char *argv[])
 		exit(-1);
 	}
 
-	/* 7. Initialize SQLite database */
-	if (sql_init(sql) != 0) {
-		sys_err("SQLite initialization failed\n");
+	/* 7. Initialize JSON database */
+	if (db_init(NULL) != 0) {
+		sys_err("JSON database initialization failed\n");
 		exit(-1);
 	}
-	sys_info("SQLite database initialized: %s\n", DBNAME);
+	sys_info("JSON database initialized: %s\n", DBNAME);
 
 	/* 8. Initialize IP address pool (loads from DB) */
 	resource_init();

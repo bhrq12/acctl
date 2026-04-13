@@ -1,33 +1,41 @@
 --[[
-AC Controller — AP Groups
-]]--
+AC Controller — AP Groups (JSON backend)
+]]
 
-local sys = require "luci.sys"
-local util = require "luci.util"
+local sys  = require "luci.sys"
+local http = require "luci.http"
 
 m = Map("acctl", translate("AP Groups"),
 	translate("Organize Access Points into groups for batch management"))
 
-function get_groups()
+-- Read groups from JSON file
+local function get_groups()
 	local groups = {}
-	local cmd = "sqlite3 /etc/acctl/ac.db " ..
-		"'SELECT id,name,description,update_policy FROM ap_group' 2>/dev/null"
-	local output = sys.exec(cmd)
-	for row in output:gmatch("[^\r\n]+") do
-		local fields = util.split(row, "|")
-		if #fields >= 4 then
-			local id = tonumber(fields[1]) or 0
-			local ap_count = tonumber(sys.exec(string.format(
-				"sqlite3 /etc/acctl/ac.db " ..
-				"'SELECT COUNT(*) FROM node WHERE group_id=%d' 2>/dev/null", id))) or 0
-			table.insert(groups, {
-				id = id,
-				name = fields[2] or "",
-				description = fields[3] or "",
-				policy = fields[4] or "manual",
-				ap_count = ap_count
-			})
+	local f = io.open("/etc/acctl/ac.json", "r")
+	if not f then return groups end
+
+	local ok, data = pcall(http.parse_json, f:read("*a"))
+	f:close()
+	if not ok or not data or not data.ap_groups then return groups end
+
+	for _, grp in ipairs(data.ap_groups) do
+		-- Count APs in this group
+		local ap_count = 0
+		if data.nodes and type(data.nodes) == "table" then
+			for _, node in ipairs(data.nodes) do
+				if tonumber(node.group_id) == tonumber(grp.id) then
+					ap_count = ap_count + 1
+				end
+			end
 		end
+
+		table.insert(groups, {
+			id          = tonumber(grp.id) or 0,
+			name        = grp.name or "",
+			description = grp.description or "",
+			policy      = grp.update_policy or "manual",
+			ap_count    = ap_count
+		})
 	end
 	return groups
 end
@@ -49,9 +57,10 @@ policy:value("auto", translate("Auto (apply template on AP connect)"))
 policy:value("rolling", translate("Rolling (upgrade one at a time)"))
 policy.default = "manual"
 
--- Group member list
-s2 = m:section(Table, get_groups(),
-	translatef("Groups (%d)", #(get_groups())))
+-- Group list display
+local grp_list = get_groups()
+s2 = m:section(Table, grp_list,
+	translatef("Groups (%d)", #grp_list))
 
 s2:option(DummyValue, "id", translate("ID"))
 s2:option(DummyValue, "name", translate("Name"))
