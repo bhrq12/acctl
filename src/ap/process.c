@@ -227,11 +227,6 @@ static void proc_brd(struct msg_ac_brd_t *msg, int len)
 	strncpy(my_uuid, sysstat.acuuid, UUID_LEN - 1);
 	SYSSTAT_UNLOCK();
 
-	/* Store the AC's MAC for potential TCP connection */
-	SYSSTAT_LOCK();
-	memcpy(sysstat.dmac, msg->header.mac, ETH_ALEN);
-	SYSSTAT_UNLOCK();
-
 	if (!already_reg) {
 		/* Phase 1: Not registered — send registration request */
 		char *resp_buf = malloc(sizeof(struct msg_ap_reg_t));

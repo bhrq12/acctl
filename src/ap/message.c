@@ -24,6 +24,7 @@
 #include "msg.h"
 #include "thread.h"
 #include "process.h"
+#include "message.h"
 
 struct message_t *head = NULL;
 struct message_t **tail = &head;

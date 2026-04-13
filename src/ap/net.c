@@ -33,7 +33,8 @@ static void *__net_dllrecv(void *arg)
 		return NULL;
 	}
 
-	int rcvlen = dll_rcv(buf, DLL_PKT_DATALEN);
+	char src_mac[ETH_ALEN];
+	int rcvlen = dll_rcv(buf, DLL_PKT_DATALEN, src_mac);
 	if (rcvlen <= 0) {
 		free(buf);
 		return NULL;
@@ -49,6 +50,8 @@ static void *__net_dllrecv(void *arg)
 
 	/* Only process AC broadcast probe messages on ETH */
 	if (head->msg_type == MSG_AC_BRD) {
+		/* Store AC's MAC from ETH header for TCP connection */
+		memcpy(sysstat.dmac, src_mac, ETH_ALEN);
 		/* Pass directly to message processor (single-threaded AP model) */
 		msg_proc(buf, rcvlen, MSG_PROTO_ETH);
 	}

@@ -25,8 +25,9 @@ struct ac_t {
 
 extern struct ac_t ac;
 
-void ac_init();
+void ac_init(void);
 void ap_lost(int sock);
-void msg_proc(struct ap_hash_t *aphash, 
+void msg_proc(struct ap_hash_t *aphash,
 	struct msg_head_t *msg, int len, int proto);
+void message_travel_init(void);
 #endif /* __PROCESS_H__ */

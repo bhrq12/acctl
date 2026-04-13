@@ -57,6 +57,7 @@ static void *__net_dllrecv(void *arg)
 
 	char src_mac[ETH_ALEN];
 	int rcvlen = dll_rcv(msg->data, DLL_PKT_DATALEN, src_mac);
+	(void)src_mac;  /* used for routing, suppress unused warning */
 	if (rcvlen < (int)sizeof(struct ethhdr)) {
 		free(msg);  /* FIX: was leaking msg on short read */
 		return NULL;
@@ -81,7 +82,8 @@ static void *__net_dllrecv(void *arg)
 
 	sys_debug("Datalink packet received from "
 		MAC_FMT" (len=%d)\n",
-		mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], rcvlen);
+		src_mac[0], src_mac[1], src_mac[2],
+		src_mac[3], src_mac[4], src_mac[5], rcvlen);
 
 	return NULL;
 }
@@ -133,7 +135,7 @@ static void *__net_netrcv(void *arg)
 	msg->len = rcvlen;
 
 	struct msg_head_t *head = (struct msg_head_t *)msg->data;
-	char *mac = head->mac;
+	const unsigned char *mac = (const unsigned char *)head->mac;
 
 	struct ap_hash_t *aphash = hash_ap(mac);
 	if (!aphash) {

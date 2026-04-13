@@ -14,6 +14,9 @@
 #include "msg.h"
 #include "apstatus.h"
 
+/* Forward declaration — defined in process.c */
+void msg_proc(void *data, int len, int proto);
+
 struct sysstat_t {
 	char     acuuid[UUID_LEN];
 	char     dmac[ETH_ALEN];

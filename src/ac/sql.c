@@ -24,6 +24,7 @@
 #include <time.h>
 
 #include "sql.h"
+#include "resource.h"
 #include "log.h"
 
 SQL sql = NULL;

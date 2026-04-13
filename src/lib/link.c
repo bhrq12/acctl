@@ -25,7 +25,6 @@
 #include <time.h>
 #include <sys/time.h>
 #include <sys/epoll.h>
-#include <errno.h>
 #include <fcntl.h>
 
 #include "log.h"

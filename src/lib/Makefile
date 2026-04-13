@@ -22,7 +22,7 @@ INC_DIR   = ../include
 OUT_DIR   = .
 
 # Source files (shared)
-LIB_SRCS  = chap.c md5.c link.c thread.c sec.c
+LIB_SRCS  = chap.c md5.c link.c thread.c sec.c sha256.c
 LIB_OBJS  = $(LIB_SRCS:.c=.o)
 
 # AC-specific sources

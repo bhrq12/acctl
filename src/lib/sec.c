@@ -30,8 +30,8 @@
 #include <ctype.h>
 
 #include "sec.h"
-#include "log.h"
 #include "sha256.h"
+#include "log.h"
 
 /* ========================================================================
  * 1. Command whitelist validation (prevents command injection)

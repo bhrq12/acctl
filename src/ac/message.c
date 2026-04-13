@@ -28,6 +28,7 @@
 #include "thread.h"
 #include "aphash.h"
 #include "process.h"
+#include "apstatus.h"
 
 #define MSG_QUEUE_MAX  (256)
 
