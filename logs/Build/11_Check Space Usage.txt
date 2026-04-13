@@ -1,88 +1,88 @@
-﻿2026-04-13T09:32:35.2458800Z ##[group]Run lsblk -f
-2026-04-13T09:32:35.2459052Z [36;1mlsblk -f[0m
-2026-04-13T09:32:35.2459226Z [36;1mecho -e "\n"[0m
-2026-04-13T09:32:35.2459420Z [36;1mdf -hT[0m
-2026-04-13T09:32:35.2459594Z [36;1mecho -e "\n"[0m
-2026-04-13T09:32:35.2459818Z [36;1msudo btrfs filesystem usage $GITHUB_WORKSPACE[0m
-2026-04-13T09:32:35.2500072Z shell: /usr/bin/bash -e {0}
-2026-04-13T09:32:35.2500301Z env:
-2026-04-13T09:32:35.2500560Z   SOURCE_URL: https://github.com/bhrq12/lede.git
-2026-04-13T09:32:35.2500834Z   SOURCE_BRANCH: v2025.5.22
-2026-04-13T09:32:35.2501062Z   CONFIG_FILE: configs/AP4220-config.config
-2026-04-13T09:32:35.2501487Z   DIY_SCRIPT: diy-script-1.sh
-2026-04-13T09:32:35.2501703Z   TOOLCHAIN_TAG: Toolchain
-2026-04-13T09:32:35.2501909Z   CLASH_KERNEL: arm64
-2026-04-13T09:32:35.2502090Z   UPLOAD_BIN_DIR: false
-2026-04-13T09:32:35.2502287Z   FIRMWARE_RELEASE: true
-2026-04-13T09:32:35.2502480Z   FIRMWARE_TAG: ROOTFS_PLUS
-2026-04-13T09:32:35.2502685Z   OPENWRT_RELEASE: true
-2026-04-13T09:32:35.2502882Z   OPENWRT_TAG: AP4220_128m_PLUS_acctl
-2026-04-13T09:32:35.2503145Z   TZ: Asia/Shanghai
-2026-04-13T09:32:35.2503433Z   OPENWRT_PATH: /home/runner/work/OpenWrt-lean/OpenWrt-lean/workspace/openwrt
-2026-04-13T09:32:35.2504404Z   VERSION_INFO: Author: bhrq12<br/>date: 2025-05-22<br/>commit: Merge branch 'coolsnowwolf:master' into master<br/>commit hash: ac341d3755749ba0e6ec23ef9ec50617b5b6ae40
-2026-04-13T09:32:35.2504975Z   CURRENT_BRANCH: main
-2026-04-13T09:32:35.2505167Z   SOURCE_REPO: lede.git
-2026-04-13T09:32:35.2505349Z   DEVICE_TARGET: ipq40xx
-2026-04-13T09:32:35.2505546Z   DEVICE_SUBTARGET: generic
-2026-04-13T09:32:35.2505836Z   TOOLCHAIN_IMAGE: toolchain-lede.git-v2025.5.22-ipq40xx-generic
-2026-04-13T09:32:35.2506145Z ##[endgroup]
-2026-04-13T09:32:35.2608018Z NAME                  FSTYPE      FSVER    LABEL           UUID                                   FSAVAIL FSUSE% MOUNTPOINTS
-2026-04-13T09:32:35.2609162Z loop0                 squashfs    4.0                                                                   0   100% /snap/core20/2717
-2026-04-13T09:32:35.2610209Z loop1                 squashfs    4.0                                                                   0   100% /snap/lxd/36918
-2026-04-13T09:32:35.2611216Z loop2                 squashfs    4.0                                                                   0   100% /snap/snapd/25935
-2026-04-13T09:32:35.2612027Z loop3                 squashfs    4.0                                                                   0   100% /snap/core24/1587
-2026-04-13T09:32:35.2612568Z loop4                 squashfs    4.0                                                                   0   100% /snap/bare/5
-2026-04-13T09:32:35.2613118Z loop5                 squashfs    4.0                                                                   0   100% /snap/firefox/8107
-2026-04-13T09:32:35.2613912Z loop6                 squashfs    4.0                                                                   0   100% /snap/gtk-common-themes/1535
-2026-04-13T09:32:35.2614510Z loop7                 squashfs    4.0                                                                   0   100% /snap/mesa-2404/1165
-2026-04-13T09:32:35.2615075Z loop8                 squashfs    4.0                                                                   0   100% /snap/gnome-46-2404/153
-2026-04-13T09:32:35.2615699Z loop9                 LVM2_member LVM2 001                 ez1ddk-9t9M-zd3H-01wR-kkJL-VviO-43MDNk                
-2026-04-13T09:32:35.2616593Z └─vgstorage-lvstorage                                                                               95.8G     3% /tmp
-2026-04-13T09:32:35.2617179Z                                                                                                                  /home/runner/work/OpenWrt-lean/OpenWrt-lean
-2026-04-13T09:32:35.2617810Z loop10                LVM2_member LVM2 001                 EI5ia8-ooMe-KQVX-BNbZ-5Og5-qyRP-BiAAtf                
-2026-04-13T09:32:35.2618494Z └─vgstorage-lvstorage                                                                               95.8G     3% /tmp
-2026-04-13T09:32:35.2619302Z                                                                                                                  /home/runner/work/OpenWrt-lean/OpenWrt-lean
-2026-04-13T09:32:35.2620008Z loop11                squashfs    4.0                                                                   0   100% /home/runner/work/OpenWrt-lean/OpenWrt-lean/workspace/openwrt-ro
-2026-04-13T09:32:35.2620637Z sda                                                                                                              
-2026-04-13T09:32:35.2621297Z ├─sda1                ext4        1.0      cloudimg-rootfs 9263239f-89fa-49d9-b341-42aa3ef2f462     97.8G    33% /
-2026-04-13T09:32:35.2622030Z ├─sda14                                                                                                          
-2026-04-13T09:32:35.2622689Z └─sda15               vfat        FAT32    UEFI            A632-6B21                                98.3M     6% /boot/efi
-2026-04-13T09:32:35.2623215Z 
-2026-04-13T09:32:35.2623302Z 
-2026-04-13T09:32:35.2623450Z Filesystem                      Type      Size  Used Avail Use% Mounted on
-2026-04-13T09:32:35.2623978Z /dev/root                       ext4      146G   48G   98G  33% /
-2026-04-13T09:32:35.2624516Z tmpfs                           tmpfs     7.9G  172K  7.9G   1% /dev/shm
-2026-04-13T09:32:35.2624880Z tmpfs                           tmpfs     3.2G  1.4M  3.2G   1% /run
-2026-04-13T09:32:35.2625180Z tmpfs                           tmpfs     5.0M     0  5.0M   0% /run/lock
-2026-04-13T09:32:35.2625546Z efivarfs                        efivarfs  128M  9.6K  128M   1% /sys/firmware/efi/efivars
-2026-04-13T09:32:35.2625925Z /dev/sda15                      vfat      105M  6.1M   99M   6% /boot/efi
-2026-04-13T09:32:35.2626262Z tmpfs                           tmpfs     1.6G   12K  1.6G   1% /run/user/1001
-2026-04-13T09:32:35.2626578Z tmpfs                           tmpfs     7.9G     0  7.9G   0% /run/qemu
-2026-04-13T09:32:35.2627028Z /dev/mapper/vgstorage-lvstorage btrfs     101G  3.2G   96G   4% /home/runner/work/OpenWrt-lean/OpenWrt-lean
-2026-04-13T09:32:35.2627619Z overlay                         overlay   101G  3.2G   96G   4% /home/runner/work/OpenWrt-lean/OpenWrt-lean/workspace/openwrt
-2026-04-13T09:32:35.2627952Z 
-2026-04-13T09:32:35.2627957Z 
-2026-04-13T09:32:35.2678867Z Overall:
-2026-04-13T09:32:35.2679194Z     Device size:		 100.94GiB
-2026-04-13T09:32:35.2679463Z     Device allocated:		   7.02GiB
-2026-04-13T09:32:35.2679703Z     Device unallocated:		  93.92GiB
-2026-04-13T09:32:35.2679944Z     Device missing:		     0.00B
-2026-04-13T09:32:35.2680175Z     Used:			   3.16GiB
-2026-04-13T09:32:35.2680482Z     Free (estimated):		  95.78GiB	(min: 48.82GiB)
-2026-04-13T09:32:35.2680879Z     Free (statfs, df):		  95.77GiB
-2026-04-13T09:32:35.2681204Z     Data ratio:			      1.00
-2026-04-13T09:32:35.2681401Z     Metadata ratio:		      2.00
-2026-04-13T09:32:35.2681627Z     Global reserve:		   5.50MiB	(used: 0.00B)
-2026-04-13T09:32:35.2681869Z     Multiple profiles:		        no
-2026-04-13T09:32:35.2682040Z 
-2026-04-13T09:32:35.2682145Z Data,single: Size:5.01GiB, Used:3.15GiB (62.89%)
-2026-04-13T09:32:35.2682423Z    /dev/mapper/vgstorage-lvstorage	   5.01GiB
-2026-04-13T09:32:35.2682593Z 
-2026-04-13T09:32:35.2682693Z Metadata,DUP: Size:1.00GiB, Used:7.23MiB (0.71%)
-2026-04-13T09:32:35.2682961Z    /dev/mapper/vgstorage-lvstorage	   2.00GiB
-2026-04-13T09:32:35.2683125Z 
-2026-04-13T09:32:35.2683223Z System,DUP: Size:8.00MiB, Used:16.00KiB (0.20%)
-2026-04-13T09:32:35.2683487Z    /dev/mapper/vgstorage-lvstorage	  16.00MiB
-2026-04-13T09:32:35.2683912Z 
-2026-04-13T09:32:35.2684000Z Unallocated:
-2026-04-13T09:32:35.2684191Z    /dev/mapper/vgstorage-lvstorage	  93.92GiB
+﻿2026-04-13T11:28:53.2460624Z ##[group]Run lsblk -f
+2026-04-13T11:28:53.2460882Z [36;1mlsblk -f[0m
+2026-04-13T11:28:53.2461061Z [36;1mecho -e "\n"[0m
+2026-04-13T11:28:53.2461251Z [36;1mdf -hT[0m
+2026-04-13T11:28:53.2461423Z [36;1mecho -e "\n"[0m
+2026-04-13T11:28:53.2461652Z [36;1msudo btrfs filesystem usage $GITHUB_WORKSPACE[0m
+2026-04-13T11:28:53.2536526Z shell: /usr/bin/bash -e {0}
+2026-04-13T11:28:53.2536752Z env:
+2026-04-13T11:28:53.2536983Z   SOURCE_URL: https://github.com/bhrq12/lede.git
+2026-04-13T11:28:53.2537260Z   SOURCE_BRANCH: v2025.5.22
+2026-04-13T11:28:53.2537482Z   CONFIG_FILE: configs/AP4220-config.config
+2026-04-13T11:28:53.2537738Z   DIY_SCRIPT: diy-script-1.sh
+2026-04-13T11:28:53.2537954Z   TOOLCHAIN_TAG: Toolchain
+2026-04-13T11:28:53.2538155Z   CLASH_KERNEL: arm64
+2026-04-13T11:28:53.2538335Z   UPLOAD_BIN_DIR: false
+2026-04-13T11:28:53.2538526Z   FIRMWARE_RELEASE: true
+2026-04-13T11:28:53.2538720Z   FIRMWARE_TAG: ROOTFS_PLUS
+2026-04-13T11:28:53.2538917Z   OPENWRT_RELEASE: true
+2026-04-13T11:28:53.2539109Z   OPENWRT_TAG: AP4220_128m_PLUS_acctl
+2026-04-13T11:28:53.2539570Z   TZ: Asia/Shanghai
+2026-04-13T11:28:53.2539881Z   OPENWRT_PATH: /home/runner/work/OpenWrt-lean/OpenWrt-lean/workspace/openwrt
+2026-04-13T11:28:53.2540601Z   VERSION_INFO: Author: bhrq12<br/>date: 2025-05-22<br/>commit: Merge branch 'coolsnowwolf:master' into master<br/>commit hash: ac341d3755749ba0e6ec23ef9ec50617b5b6ae40
+2026-04-13T11:28:53.2541176Z   CURRENT_BRANCH: main
+2026-04-13T11:28:53.2541365Z   SOURCE_REPO: lede.git
+2026-04-13T11:28:53.2541549Z   DEVICE_TARGET: ipq40xx
+2026-04-13T11:28:53.2541747Z   DEVICE_SUBTARGET: generic
+2026-04-13T11:28:53.2542030Z   TOOLCHAIN_IMAGE: toolchain-lede.git-v2025.5.22-ipq40xx-generic
+2026-04-13T11:28:53.2542343Z ##[endgroup]
+2026-04-13T11:28:53.2781271Z NAME                  FSTYPE      FSVER    LABEL           UUID                                   FSAVAIL FSUSE% MOUNTPOINTS
+2026-04-13T11:28:53.2782189Z loop0                 squashfs    4.0                                                                   0   100% /snap/core20/2717
+2026-04-13T11:28:53.2783156Z loop1                 squashfs    4.0                                                                   0   100% /snap/lxd/36918
+2026-04-13T11:28:53.2783728Z loop2                 squashfs    4.0                                                                   0   100% /snap/snapd/25935
+2026-04-13T11:28:53.2784502Z loop3                 squashfs    4.0                                                                   0   100% /snap/core24/1587
+2026-04-13T11:28:53.2785270Z loop4                 squashfs    4.0                                                                   0   100% /snap/bare/5
+2026-04-13T11:28:53.2785794Z loop5                 squashfs    4.0                                                                   0   100% /snap/firefox/8107
+2026-04-13T11:28:53.2786296Z loop6                 squashfs    4.0                                                                   0   100% /snap/mesa-2404/1165
+2026-04-13T11:28:53.2786783Z loop7                 squashfs    4.0                                                                   0   100% /snap/gnome-46-2404/153
+2026-04-13T11:28:53.2787299Z loop8                 squashfs    4.0                                                                   0   100% /snap/gtk-common-themes/1535
+2026-04-13T11:28:53.2787892Z loop9                 LVM2_member LVM2 001                 92Xx3k-e7dU-dwx4-DWnV-6q9i-JNiN-SneI0e                
+2026-04-13T11:28:53.2788746Z └─vgstorage-lvstorage                                                                               95.8G     3% /tmp
+2026-04-13T11:28:53.2789294Z                                                                                                                  /home/runner/work/OpenWrt-lean/OpenWrt-lean
+2026-04-13T11:28:53.2789860Z loop10                LVM2_member LVM2 001                 WMUs07-jPj4-e0aq-v9bS-H5w0-efjL-knlXYg                
+2026-04-13T11:28:53.2790475Z └─vgstorage-lvstorage                                                                               95.8G     3% /tmp
+2026-04-13T11:28:53.2791305Z                                                                                                                  /home/runner/work/OpenWrt-lean/OpenWrt-lean
+2026-04-13T11:28:53.2791935Z loop11                squashfs    4.0                                                                   0   100% /home/runner/work/OpenWrt-lean/OpenWrt-lean/workspace/openwrt-ro
+2026-04-13T11:28:53.2792509Z sda                                                                                                              
+2026-04-13T11:28:53.2793276Z ├─sda1                ext4        1.0      cloudimg-rootfs 9263239f-89fa-49d9-b341-42aa3ef2f462     97.8G    33% /
+2026-04-13T11:28:53.2793845Z ├─sda14                                                                                                          
+2026-04-13T11:28:53.2794394Z └─sda15               vfat        FAT32    UEFI            A632-6B21                                98.3M     6% /boot/efi
+2026-04-13T11:28:53.2794876Z 
+2026-04-13T11:28:53.2794883Z 
+2026-04-13T11:28:53.2800462Z Filesystem                      Type      Size  Used Avail Use% Mounted on
+2026-04-13T11:28:53.2801019Z /dev/root                       ext4      146G   48G   98G  33% /
+2026-04-13T11:28:53.2801530Z tmpfs                           tmpfs     7.9G  172K  7.9G   1% /dev/shm
+2026-04-13T11:28:53.2802029Z tmpfs                           tmpfs     3.2G  1.4M  3.2G   1% /run
+2026-04-13T11:28:53.2802538Z tmpfs                           tmpfs     5.0M     0  5.0M   0% /run/lock
+2026-04-13T11:28:53.2803280Z efivarfs                        efivarfs  128M   34K  128M   1% /sys/firmware/efi/efivars
+2026-04-13T11:28:53.2803909Z /dev/sda15                      vfat      105M  6.1M   99M   6% /boot/efi
+2026-04-13T11:28:53.2804450Z tmpfs                           tmpfs     1.6G   12K  1.6G   1% /run/user/1001
+2026-04-13T11:28:53.2804973Z tmpfs                           tmpfs     7.9G     0  7.9G   0% /run/qemu
+2026-04-13T11:28:53.2805452Z /dev/mapper/vgstorage-lvstorage btrfs     101G  3.2G   96G   4% /home/runner/work/OpenWrt-lean/OpenWrt-lean
+2026-04-13T11:28:53.2806072Z overlay                         overlay   101G  3.2G   96G   4% /home/runner/work/OpenWrt-lean/OpenWrt-lean/workspace/openwrt
+2026-04-13T11:28:53.2806420Z 
+2026-04-13T11:28:53.2806425Z 
+2026-04-13T11:28:53.2879358Z Overall:
+2026-04-13T11:28:53.2879653Z     Device size:		 100.95GiB
+2026-04-13T11:28:53.2879991Z     Device allocated:		   7.02GiB
+2026-04-13T11:28:53.2880341Z     Device unallocated:		  93.92GiB
+2026-04-13T11:28:53.2880572Z     Device missing:		     0.00B
+2026-04-13T11:28:53.2880793Z     Used:			   3.17GiB
+2026-04-13T11:28:53.2881013Z     Free (estimated):		  95.78GiB	(min: 48.82GiB)
+2026-04-13T11:28:53.2881277Z     Free (statfs, df):		  95.78GiB
+2026-04-13T11:28:53.2881497Z     Data ratio:			      1.00
+2026-04-13T11:28:53.2881701Z     Metadata ratio:		      2.00
+2026-04-13T11:28:53.2881995Z     Global reserve:		   5.50MiB	(used: 0.00B)
+2026-04-13T11:28:53.2882377Z     Multiple profiles:		        no
+2026-04-13T11:28:53.2882610Z 
+2026-04-13T11:28:53.2882719Z Data,single: Size:5.01GiB, Used:3.15GiB (62.96%)
+2026-04-13T11:28:53.2883118Z    /dev/mapper/vgstorage-lvstorage	   5.01GiB
+2026-04-13T11:28:53.2883297Z 
+2026-04-13T11:28:53.2883406Z Metadata,DUP: Size:1.00GiB, Used:7.44MiB (0.73%)
+2026-04-13T11:28:53.2883695Z    /dev/mapper/vgstorage-lvstorage	   2.00GiB
+2026-04-13T11:28:53.2883866Z 
+2026-04-13T11:28:53.2883968Z System,DUP: Size:8.00MiB, Used:16.00KiB (0.20%)
+2026-04-13T11:28:53.2884237Z    /dev/mapper/vgstorage-lvstorage	  16.00MiB
+2026-04-13T11:28:53.2884398Z 
+2026-04-13T11:28:53.2884470Z Unallocated:
+2026-04-13T11:28:53.2884661Z    /dev/mapper/vgstorage-lvstorage	  93.92GiB

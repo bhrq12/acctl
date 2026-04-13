@@ -1,75 +1,75 @@
-﻿2026-04-13T09:27:55.2766681Z ##[group]Run [ -e files ] && mv files $OPENWRT_PATH/files
-2026-04-13T09:27:55.2767172Z [36;1m[ -e files ] && mv files $OPENWRT_PATH/files[0m
-2026-04-13T09:27:55.2767572Z [36;1m[ -e $CONFIG_FILE ] && mv $CONFIG_FILE $OPENWRT_PATH/.config[0m
-2026-04-13T09:27:55.2767963Z [36;1mchmod +x $GITHUB_WORKSPACE/scripts/*.sh[0m
-2026-04-13T09:27:55.2768284Z [36;1mchmod +x $DIY_SCRIPT[0m
-2026-04-13T09:27:55.2768543Z [36;1mcd $OPENWRT_PATH[0m
-2026-04-13T09:27:55.2768805Z [36;1m$GITHUB_WORKSPACE/$DIY_SCRIPT[0m
-2026-04-13T09:27:55.2769191Z [36;1m$GITHUB_WORKSPACE/scripts/preset-clash-core.sh $CLASH_KERNEL[0m
-2026-04-13T09:27:55.2769679Z [36;1m$GITHUB_WORKSPACE/scripts/preset-terminal-tools.sh[0m
-2026-04-13T09:27:55.2812869Z shell: /usr/bin/bash -e {0}
-2026-04-13T09:27:55.2813121Z env:
-2026-04-13T09:27:55.2813342Z   SOURCE_URL: https://github.com/bhrq12/lede.git
-2026-04-13T09:27:55.2813793Z   SOURCE_BRANCH: v2025.5.22
-2026-04-13T09:27:55.2814029Z   CONFIG_FILE: configs/AP4220-config.config
-2026-04-13T09:27:55.2814352Z   DIY_SCRIPT: diy-script-1.sh
-2026-04-13T09:27:55.2814571Z   TOOLCHAIN_TAG: Toolchain
-2026-04-13T09:27:55.2814776Z   CLASH_KERNEL: arm64
-2026-04-13T09:27:55.2814957Z   UPLOAD_BIN_DIR: false
-2026-04-13T09:27:55.2815156Z   FIRMWARE_RELEASE: true
-2026-04-13T09:27:55.2815353Z   FIRMWARE_TAG: ROOTFS_PLUS
-2026-04-13T09:27:55.2815558Z   OPENWRT_RELEASE: true
-2026-04-13T09:27:55.2815762Z   OPENWRT_TAG: AP4220_128m_PLUS_acctl
-2026-04-13T09:27:55.2815990Z   TZ: Asia/Shanghai
-2026-04-13T09:27:55.2816284Z   OPENWRT_PATH: /home/runner/work/OpenWrt-lean/OpenWrt-lean/workspace/openwrt
-2026-04-13T09:27:55.2816981Z   VERSION_INFO: Author: bhrq12<br/>date: 2025-05-22<br/>commit: Merge branch 'coolsnowwolf:master' into master<br/>commit hash: ac341d3755749ba0e6ec23ef9ec50617b5b6ae40
-2026-04-13T09:27:55.2817732Z   CURRENT_BRANCH: main
-2026-04-13T09:27:55.2817918Z   SOURCE_REPO: lede.git
-2026-04-13T09:27:55.2818108Z   DEVICE_TARGET: ipq40xx
-2026-04-13T09:27:55.2818300Z   DEVICE_SUBTARGET: generic
-2026-04-13T09:27:55.2818600Z   TOOLCHAIN_IMAGE: toolchain-lede.git-v2025.5.22-ipq40xx-generic
-2026-04-13T09:27:55.2818908Z ##[endgroup]
-2026-04-13T09:27:55.3001579Z Cloning into 'package/acctl'...
-2026-04-13T09:27:55.5974514Z Updating feed 'packages' from 'https://github.com/coolsnowwolf/packages' ...
-2026-04-13T09:27:55.7586680Z Already up to date.
-2026-04-13T09:27:55.7792986Z Updating feed 'luci' from 'https://github.com/coolsnowwolf/luci.git;openwrt-23.05' ...
-2026-04-13T09:27:55.9721087Z Already up to date.
-2026-04-13T09:27:55.9934311Z Updating feed 'routing' from 'https://github.com/coolsnowwolf/routing' ...
-2026-04-13T09:27:56.1498864Z Already up to date.
-2026-04-13T09:27:56.1674673Z Updating feed 'telephony' from 'https://github.com/coolsnowwolf/telephony.git' ...
-2026-04-13T09:27:56.3452102Z Already up to date.
-2026-04-13T09:27:56.3633445Z Updating feed 'helloworld' from 'https://github.com/fw876/helloworld.git' ...
-2026-04-13T09:27:56.5278526Z Already up to date.
-2026-04-13T09:27:56.5456455Z Create index file './feeds/packages.index' 
-2026-04-13T09:27:57.5770787Z Create index file './feeds/luci.index' 
-2026-04-13T09:27:58.2460854Z Create index file './feeds/routing.index' 
-2026-04-13T09:27:58.7528347Z Create index file './feeds/telephony.index' 
-2026-04-13T09:27:59.2724705Z Create index file './feeds/helloworld.index' 
-2026-04-13T09:28:13.9680567Z WARNING: Makefile 'package/feeds/packages/libmpc/Makefile' has a dependency on 'libmpfr', which does not exist
-2026-04-13T09:28:13.9984954Z WARNING: Makefile 'package/feeds/packages/openssh/Makefile' has a dependency on 'libcrypt-compat', which does not exist
-2026-04-13T09:28:13.9985898Z WARNING: Makefile 'package/feeds/packages/openssh/Makefile' has a dependency on 'libcrypt-compat', which does not exist
-2026-04-13T09:28:14.0043305Z WARNING: Makefile 'package/feeds/packages/python-gmpy2/Makefile' has a dependency on 'libmpfr', which does not exist
-2026-04-13T09:28:14.0065302Z WARNING: Makefile 'package/feeds/packages/python3/Makefile' has a dependency on 'libcrypt-compat', which does not exist
-2026-04-13T09:28:20.0255313Z Installing all packages from feed packages.
-2026-04-13T09:28:20.0255837Z Installing all packages from feed luci.
-2026-04-13T09:28:20.0256196Z Installing all packages from feed routing.
-2026-04-13T09:28:20.0256570Z Installing all packages from feed telephony.
-2026-04-13T09:28:20.0256952Z Installing all packages from feed helloworld.
-2026-04-13T09:28:20.1956231Z curl: (22) The requested URL returned error: 404
-2026-04-13T09:28:20.3390776Z 
-2026-04-13T09:28:20.3391616Z gzip: stdin: unexpected end of file
-2026-04-13T09:28:20.3396292Z tar: Child returned status 1
-2026-04-13T09:28:20.3396805Z tar: Error is not recoverable: exiting now
-2026-04-13T09:28:20.3422660Z wget: missing URL
-2026-04-13T09:28:20.3423013Z Usage: wget [OPTION]... [URL]...
-2026-04-13T09:28:20.3423194Z 
-2026-04-13T09:28:20.3423335Z Try `wget --help' for more options.
-2026-04-13T09:28:20.3424713Z 
-2026-04-13T09:28:20.3425056Z gzip: stdin: unexpected end of file
-2026-04-13T09:28:20.4019222Z clash
-2026-04-13T09:28:21.1082704Z ~/work/OpenWrt-lean/OpenWrt-lean/workspace/openwrt/files/root ~/work/OpenWrt-lean/OpenWrt-lean/workspace/openwrt
-2026-04-13T09:28:21.1092892Z Cloning into './.oh-my-zsh'...
-2026-04-13T09:28:21.5075581Z Cloning into './.oh-my-zsh/custom/plugins/zsh-autosuggestions'...
-2026-04-13T09:28:21.7822553Z Cloning into './.oh-my-zsh/custom/plugins/zsh-syntax-highlighting'...
-2026-04-13T09:28:22.0798184Z Cloning into './.oh-my-zsh/custom/plugins/zsh-completions'...
-2026-04-13T09:28:22.4674679Z ~/work/OpenWrt-lean/OpenWrt-lean/workspace/openwrt
+﻿2026-04-13T11:22:11.5409118Z ##[group]Run [ -e files ] && mv files $OPENWRT_PATH/files
+2026-04-13T11:22:11.5409528Z [36;1m[ -e files ] && mv files $OPENWRT_PATH/files[0m
+2026-04-13T11:22:11.5409898Z [36;1m[ -e $CONFIG_FILE ] && mv $CONFIG_FILE $OPENWRT_PATH/.config[0m
+2026-04-13T11:22:11.5410237Z [36;1mchmod +x $GITHUB_WORKSPACE/scripts/*.sh[0m
+2026-04-13T11:22:11.5410509Z [36;1mchmod +x $DIY_SCRIPT[0m
+2026-04-13T11:22:11.5410725Z [36;1mcd $OPENWRT_PATH[0m
+2026-04-13T11:22:11.5410945Z [36;1m$GITHUB_WORKSPACE/$DIY_SCRIPT[0m
+2026-04-13T11:22:11.5411284Z [36;1m$GITHUB_WORKSPACE/scripts/preset-clash-core.sh $CLASH_KERNEL[0m
+2026-04-13T11:22:11.5411682Z [36;1m$GITHUB_WORKSPACE/scripts/preset-terminal-tools.sh[0m
+2026-04-13T11:22:11.5487346Z shell: /usr/bin/bash -e {0}
+2026-04-13T11:22:11.5487593Z env:
+2026-04-13T11:22:11.5487830Z   SOURCE_URL: https://github.com/bhrq12/lede.git
+2026-04-13T11:22:11.5488113Z   SOURCE_BRANCH: v2025.5.22
+2026-04-13T11:22:11.5488351Z   CONFIG_FILE: configs/AP4220-config.config
+2026-04-13T11:22:11.5488659Z   DIY_SCRIPT: diy-script-1.sh
+2026-04-13T11:22:11.5488880Z   TOOLCHAIN_TAG: Toolchain
+2026-04-13T11:22:11.5489076Z   CLASH_KERNEL: arm64
+2026-04-13T11:22:11.5489279Z   UPLOAD_BIN_DIR: false
+2026-04-13T11:22:11.5489492Z   FIRMWARE_RELEASE: true
+2026-04-13T11:22:11.5489689Z   FIRMWARE_TAG: ROOTFS_PLUS
+2026-04-13T11:22:11.5489888Z   OPENWRT_RELEASE: true
+2026-04-13T11:22:11.5490080Z   OPENWRT_TAG: AP4220_128m_PLUS_acctl
+2026-04-13T11:22:11.5490305Z   TZ: Asia/Shanghai
+2026-04-13T11:22:11.5490603Z   OPENWRT_PATH: /home/runner/work/OpenWrt-lean/OpenWrt-lean/workspace/openwrt
+2026-04-13T11:22:11.5491328Z   VERSION_INFO: Author: bhrq12<br/>date: 2025-05-22<br/>commit: Merge branch 'coolsnowwolf:master' into master<br/>commit hash: ac341d3755749ba0e6ec23ef9ec50617b5b6ae40
+2026-04-13T11:22:11.5491910Z   CURRENT_BRANCH: main
+2026-04-13T11:22:11.5492092Z   SOURCE_REPO: lede.git
+2026-04-13T11:22:11.5492276Z   DEVICE_TARGET: ipq40xx
+2026-04-13T11:22:11.5492472Z   DEVICE_SUBTARGET: generic
+2026-04-13T11:22:11.5492863Z   TOOLCHAIN_IMAGE: toolchain-lede.git-v2025.5.22-ipq40xx-generic
+2026-04-13T11:22:11.5493498Z ##[endgroup]
+2026-04-13T11:22:11.5747718Z Cloning into 'package/acctl'...
+2026-04-13T11:22:11.8001094Z Updating feed 'packages' from 'https://github.com/coolsnowwolf/packages' ...
+2026-04-13T11:22:11.9020434Z Already up to date.
+2026-04-13T11:22:11.9284600Z Updating feed 'luci' from 'https://github.com/coolsnowwolf/luci.git;openwrt-23.05' ...
+2026-04-13T11:22:12.0395886Z Already up to date.
+2026-04-13T11:22:12.0671496Z Updating feed 'routing' from 'https://github.com/coolsnowwolf/routing' ...
+2026-04-13T11:22:12.1783173Z Already up to date.
+2026-04-13T11:22:12.2035844Z Updating feed 'telephony' from 'https://github.com/coolsnowwolf/telephony.git' ...
+2026-04-13T11:22:12.2984285Z Already up to date.
+2026-04-13T11:22:12.3237096Z Updating feed 'helloworld' from 'https://github.com/fw876/helloworld.git' ...
+2026-04-13T11:22:12.4254399Z Already up to date.
+2026-04-13T11:22:12.4508079Z Create index file './feeds/packages.index' 
+2026-04-13T11:22:13.7696571Z Create index file './feeds/luci.index' 
+2026-04-13T11:22:14.6854394Z Create index file './feeds/routing.index' 
+2026-04-13T11:22:15.3094328Z Create index file './feeds/telephony.index' 
+2026-04-13T11:22:15.9363223Z Create index file './feeds/helloworld.index' 
+2026-04-13T11:22:33.9334602Z WARNING: Makefile 'package/feeds/packages/libmpc/Makefile' has a dependency on 'libmpfr', which does not exist
+2026-04-13T11:22:33.9695616Z WARNING: Makefile 'package/feeds/packages/openssh/Makefile' has a dependency on 'libcrypt-compat', which does not exist
+2026-04-13T11:22:33.9696931Z WARNING: Makefile 'package/feeds/packages/openssh/Makefile' has a dependency on 'libcrypt-compat', which does not exist
+2026-04-13T11:22:33.9762470Z WARNING: Makefile 'package/feeds/packages/python-gmpy2/Makefile' has a dependency on 'libmpfr', which does not exist
+2026-04-13T11:22:33.9788110Z WARNING: Makefile 'package/feeds/packages/python3/Makefile' has a dependency on 'libcrypt-compat', which does not exist
+2026-04-13T11:22:42.5991120Z Installing all packages from feed packages.
+2026-04-13T11:22:42.5991938Z Installing all packages from feed luci.
+2026-04-13T11:22:42.5992401Z Installing all packages from feed routing.
+2026-04-13T11:22:42.5992673Z Installing all packages from feed telephony.
+2026-04-13T11:22:42.5993249Z Installing all packages from feed helloworld.
+2026-04-13T11:22:42.7146998Z curl: (22) The requested URL returned error: 404
+2026-04-13T11:22:42.8092454Z 
+2026-04-13T11:22:42.8093219Z gzip: stdin: unexpected end of file
+2026-04-13T11:22:42.8097324Z tar: Child returned status 1
+2026-04-13T11:22:42.8097911Z tar: Error is not recoverable: exiting now
+2026-04-13T11:22:42.8130855Z wget: missing URL
+2026-04-13T11:22:42.8131202Z Usage: wget [OPTION]... [URL]...
+2026-04-13T11:22:42.8131372Z 
+2026-04-13T11:22:42.8131478Z Try `wget --help' for more options.
+2026-04-13T11:22:42.8133789Z 
+2026-04-13T11:22:42.8133982Z gzip: stdin: unexpected end of file
+2026-04-13T11:22:42.8495564Z clash
+2026-04-13T11:22:43.1297578Z ~/work/OpenWrt-lean/OpenWrt-lean/workspace/openwrt/files/root ~/work/OpenWrt-lean/OpenWrt-lean/workspace/openwrt
+2026-04-13T11:22:43.1310915Z Cloning into './.oh-my-zsh'...
+2026-04-13T11:22:43.4861251Z Cloning into './.oh-my-zsh/custom/plugins/zsh-autosuggestions'...
+2026-04-13T11:22:43.6328837Z Cloning into './.oh-my-zsh/custom/plugins/zsh-syntax-highlighting'...
+2026-04-13T11:22:43.8457159Z Cloning into './.oh-my-zsh/custom/plugins/zsh-completions'...
+2026-04-13T11:22:44.1093897Z ~/work/OpenWrt-lean/OpenWrt-lean/workspace/openwrt

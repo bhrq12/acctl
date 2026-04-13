@@ -1,58 +1,58 @@
-﻿2026-04-13T09:24:33.7889065Z ##[group]Run echo "警告⚠"
-2026-04-13T09:24:33.7890192Z [36;1mecho "警告⚠"[0m
-2026-04-13T09:24:33.7891196Z [36;1mecho "分配的服务器性能有限，若选择的插件过多，务必注意CPU性能！"[0m
-2026-04-13T09:24:33.7892539Z [36;1mecho -e "已知CPU型号（降序）：8370C，8272CL，8171M，E5-2673 \n"[0m
-2026-04-13T09:24:33.7894217Z [36;1mecho "--------------------------CPU信息--------------------------"[0m
-2026-04-13T09:24:33.7896008Z [36;1mecho "CPU物理数量：$(cat /proc/cpuinfo | grep "physical id" | sort | uniq | wc -l)"[0m
-2026-04-13T09:24:33.7897964Z [36;1mecho -e "CPU核心信息：$(cat /proc/cpuinfo | grep name | cut -f2 -d: | uniq -c) \n"[0m
-2026-04-13T09:24:33.7899615Z [36;1mecho "--------------------------内存信息--------------------------"[0m
-2026-04-13T09:24:33.7900913Z [36;1mecho "已安装内存详细信息："[0m
-2026-04-13T09:24:33.7902030Z [36;1mecho -e "$(sudo lshw -short -C memory | grep GiB) \n"[0m
-2026-04-13T09:24:33.7903483Z [36;1mecho "--------------------------硬盘信息--------------------------"[0m
-2026-04-13T09:24:33.7905043Z [36;1mecho "硬盘数量：$(ls /dev/sd* | grep -v [1-9] | wc -l)" && df -hT[0m
-2026-04-13T09:24:33.7950708Z shell: /usr/bin/bash -e {0}
-2026-04-13T09:24:33.7952130Z env:
-2026-04-13T09:24:33.7953045Z   SOURCE_URL: https://github.com/bhrq12/lede.git
-2026-04-13T09:24:33.7954278Z   SOURCE_BRANCH: v2025.5.22
-2026-04-13T09:24:33.7955354Z   CONFIG_FILE: configs/AP4220-config.config
-2026-04-13T09:24:33.7956438Z   DIY_SCRIPT: diy-script-1.sh
-2026-04-13T09:24:33.7957381Z   TOOLCHAIN_TAG: Toolchain
-2026-04-13T09:24:33.7958603Z   CLASH_KERNEL: arm64
-2026-04-13T09:24:33.7959483Z   UPLOAD_BIN_DIR: false
-2026-04-13T09:24:33.7960329Z   FIRMWARE_RELEASE: true
-2026-04-13T09:24:33.7961270Z   FIRMWARE_TAG: ROOTFS_PLUS
-2026-04-13T09:24:33.7962197Z   OPENWRT_RELEASE: true
-2026-04-13T09:24:33.7963066Z   OPENWRT_TAG: AP4220_128m_PLUS_acctl
-2026-04-13T09:24:33.7964166Z   TZ: Asia/Shanghai
-2026-04-13T09:24:33.7965370Z   OPENWRT_PATH: /home/runner/work/OpenWrt-lean/OpenWrt-lean/workspace/openwrt
-2026-04-13T09:24:33.7968031Z   VERSION_INFO: Author: bhrq12<br/>date: 2025-05-22<br/>commit: Merge branch 'coolsnowwolf:master' into master<br/>commit hash: ac341d3755749ba0e6ec23ef9ec50617b5b6ae40
-2026-04-13T09:24:33.7970337Z   CURRENT_BRANCH: main
-2026-04-13T09:24:33.7971168Z   SOURCE_REPO: lede.git
-2026-04-13T09:24:33.7972053Z   DEVICE_TARGET: ipq40xx
-2026-04-13T09:24:33.7972945Z   DEVICE_SUBTARGET: generic
-2026-04-13T09:24:33.7974292Z   TOOLCHAIN_IMAGE: toolchain-lede.git-v2025.5.22-ipq40xx-generic
-2026-04-13T09:24:33.7975533Z ##[endgroup]
-2026-04-13T09:24:33.8112790Z 警告⚠
-2026-04-13T09:24:33.8114523Z 分配的服务器性能有限，若选择的插件过多，务必注意CPU性能！
-2026-04-13T09:24:33.8247238Z 已知CPU型号（降序）：8370C，8272CL，8171M，E5-2673 
-2026-04-13T09:24:33.8248467Z 
-2026-04-13T09:24:33.8249321Z --------------------------CPU信息--------------------------
-2026-04-13T09:24:33.8251125Z CPU物理数量：1
-2026-04-13T09:24:33.8252931Z CPU核心信息：      4  Intel(R) Xeon(R) Platinum 8370C CPU @ 2.80GHz 
-2026-04-13T09:24:33.8254388Z 
-2026-04-13T09:24:33.8254979Z --------------------------内存信息--------------------------
-2026-04-13T09:24:33.8256366Z 已安装内存详细信息：
-2026-04-13T09:24:34.8800514Z /0/6                      memory         16GiB System Memory
-2026-04-13T09:24:34.8802208Z /0/6/0                    memory         1GiB 
-2026-04-13T09:24:34.8802781Z /0/6/1                    memory         15GiB  
-2026-04-13T09:24:34.8803115Z 
-2026-04-13T09:24:34.8803850Z --------------------------硬盘信息--------------------------
-2026-04-13T09:24:34.8820943Z 硬盘数量：1
-2026-04-13T09:24:34.8900659Z Filesystem     Type      Size  Used Avail Use% Mounted on
-2026-04-13T09:24:34.8901690Z /dev/root      ext4      146G   56G   90G  39% /
-2026-04-13T09:24:34.8902605Z tmpfs          tmpfs     7.9G  172K  7.9G   1% /dev/shm
-2026-04-13T09:24:34.8903248Z tmpfs          tmpfs     3.2G  1.1M  3.2G   1% /run
-2026-04-13T09:24:34.8904011Z tmpfs          tmpfs     5.0M     0  5.0M   0% /run/lock
-2026-04-13T09:24:34.8904511Z efivarfs       efivarfs  128M  9.6K  128M   1% /sys/firmware/efi/efivars
-2026-04-13T09:24:34.8905025Z /dev/sda15     vfat      105M  6.1M   99M   6% /boot/efi
-2026-04-13T09:24:34.8905888Z tmpfs          tmpfs     1.6G   12K  1.6G   1% /run/user/1001
+﻿2026-04-13T10:58:11.1420969Z ##[group]Run echo "警告⚠"
+2026-04-13T10:58:11.1422034Z [36;1mecho "警告⚠"[0m
+2026-04-13T10:58:11.1423153Z [36;1mecho "分配的服务器性能有限，若选择的插件过多，务必注意CPU性能！"[0m
+2026-04-13T10:58:11.1424456Z [36;1mecho -e "已知CPU型号（降序）：8370C，8272CL，8171M，E5-2673 \n"[0m
+2026-04-13T10:58:11.1425941Z [36;1mecho "--------------------------CPU信息--------------------------"[0m
+2026-04-13T10:58:11.1427739Z [36;1mecho "CPU物理数量：$(cat /proc/cpuinfo | grep "physical id" | sort | uniq | wc -l)"[0m
+2026-04-13T10:58:11.1429729Z [36;1mecho -e "CPU核心信息：$(cat /proc/cpuinfo | grep name | cut -f2 -d: | uniq -c) \n"[0m
+2026-04-13T10:58:11.1431426Z [36;1mecho "--------------------------内存信息--------------------------"[0m
+2026-04-13T10:58:11.1432682Z [36;1mecho "已安装内存详细信息："[0m
+2026-04-13T10:58:11.1434016Z [36;1mecho -e "$(sudo lshw -short -C memory | grep GiB) \n"[0m
+2026-04-13T10:58:11.1435482Z [36;1mecho "--------------------------硬盘信息--------------------------"[0m
+2026-04-13T10:58:11.1436949Z [36;1mecho "硬盘数量：$(ls /dev/sd* | grep -v [1-9] | wc -l)" && df -hT[0m
+2026-04-13T10:58:11.1511151Z shell: /usr/bin/bash -e {0}
+2026-04-13T10:58:11.1512346Z env:
+2026-04-13T10:58:11.1513525Z   SOURCE_URL: https://github.com/bhrq12/lede.git
+2026-04-13T10:58:11.1514665Z   SOURCE_BRANCH: v2025.5.22
+2026-04-13T10:58:11.1515621Z   CONFIG_FILE: configs/AP4220-config.config
+2026-04-13T10:58:11.1516682Z   DIY_SCRIPT: diy-script-1.sh
+2026-04-13T10:58:11.1517602Z   TOOLCHAIN_TAG: Toolchain
+2026-04-13T10:58:11.1518477Z   CLASH_KERNEL: arm64
+2026-04-13T10:58:11.1519600Z   UPLOAD_BIN_DIR: false
+2026-04-13T10:58:11.1520444Z   FIRMWARE_RELEASE: true
+2026-04-13T10:58:11.1521314Z   FIRMWARE_TAG: ROOTFS_PLUS
+2026-04-13T10:58:11.1522220Z   OPENWRT_RELEASE: true
+2026-04-13T10:58:11.1523214Z   OPENWRT_TAG: AP4220_128m_PLUS_acctl
+2026-04-13T10:58:11.1524183Z   TZ: Asia/Shanghai
+2026-04-13T10:58:11.1525369Z   OPENWRT_PATH: /home/runner/work/OpenWrt-lean/OpenWrt-lean/workspace/openwrt
+2026-04-13T10:58:11.1528183Z   VERSION_INFO: Author: bhrq12<br/>date: 2025-05-22<br/>commit: Merge branch 'coolsnowwolf:master' into master<br/>commit hash: ac341d3755749ba0e6ec23ef9ec50617b5b6ae40
+2026-04-13T10:58:11.1530610Z   CURRENT_BRANCH: main
+2026-04-13T10:58:11.1531425Z   SOURCE_REPO: lede.git
+2026-04-13T10:58:11.1532250Z   DEVICE_TARGET: ipq40xx
+2026-04-13T10:58:11.1533189Z   DEVICE_SUBTARGET: generic
+2026-04-13T10:58:11.1534411Z   TOOLCHAIN_IMAGE: toolchain-lede.git-v2025.5.22-ipq40xx-generic
+2026-04-13T10:58:11.1535706Z ##[endgroup]
+2026-04-13T10:58:11.1703319Z 警告⚠
+2026-04-13T10:58:11.1704785Z 分配的服务器性能有限，若选择的插件过多，务必注意CPU性能！
+2026-04-13T10:58:11.1706259Z 已知CPU型号（降序）：8370C，8272CL，8171M，E5-2673 
+2026-04-13T10:58:11.1707245Z 
+2026-04-13T10:58:11.1708001Z --------------------------CPU信息--------------------------
+2026-04-13T10:58:11.1765776Z CPU物理数量：1
+2026-04-13T10:58:11.1791293Z CPU核心信息：      4  AMD EPYC 9V74 80-Core Processor 
+2026-04-13T10:58:11.1792510Z 
+2026-04-13T10:58:11.1793433Z --------------------------内存信息--------------------------
+2026-04-13T10:58:11.1795127Z 已安装内存详细信息：
+2026-04-13T10:58:12.2930026Z /0/6                      memory         16GiB System Memory
+2026-04-13T10:58:12.2930790Z /0/6/0                    memory         1GiB 
+2026-04-13T10:58:12.2931266Z /0/6/1                    memory         15GiB  
+2026-04-13T10:58:12.2931614Z 
+2026-04-13T10:58:12.2932238Z --------------------------硬盘信息--------------------------
+2026-04-13T10:58:12.2954187Z 硬盘数量：1
+2026-04-13T10:58:12.3140726Z Filesystem     Type      Size  Used Avail Use% Mounted on
+2026-04-13T10:58:12.3141496Z /dev/root      ext4      146G   56G   90G  39% /
+2026-04-13T10:58:12.3141919Z tmpfs          tmpfs     7.9G  172K  7.9G   1% /dev/shm
+2026-04-13T10:58:12.3142277Z tmpfs          tmpfs     3.2G  1.1M  3.2G   1% /run
+2026-04-13T10:58:12.3142619Z tmpfs          tmpfs     5.0M     0  5.0M   0% /run/lock
+2026-04-13T10:58:12.3143154Z efivarfs       efivarfs  128M   34K  128M   1% /sys/firmware/efi/efivars
+2026-04-13T10:58:12.3143673Z /dev/sda15     vfat      105M  6.1M   99M   6% /boot/efi
+2026-04-13T10:58:12.3144248Z tmpfs          tmpfs     1.6G   12K  1.6G   1% /run/user/1001

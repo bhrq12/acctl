@@ -1,88 +1,88 @@
-﻿2026-04-13T09:27:23.7489589Z ##[group]Run sudo swapoff -a && sudo rm -f /mnt/swapfile
-2026-04-13T09:27:23.7490024Z [36;1msudo swapoff -a && sudo rm -f /mnt/swapfile[0m
-2026-04-13T09:27:23.7490394Z [36;1mexport ROOT_FREE_KB=$(df --block-size=1024 --output=avail / | tail -1)[0m
-2026-04-13T09:27:23.7490794Z [36;1mexport ROOT_LOOP_KB=$(expr $ROOT_FREE_KB - 1048576)[0m
-2026-04-13T09:27:23.7491256Z [36;1mexport ROOT_LOOP_BYTES=$(expr $ROOT_LOOP_KB \* 1024)[0m
-2026-04-13T09:27:23.7491590Z [36;1msudo fallocate -l $ROOT_LOOP_BYTES /root.img[0m
-2026-04-13T09:27:23.7491935Z [36;1mexport ROOT_LOOP_DEVNAME=$(sudo losetup -Pf --show /root.img)[0m
-2026-04-13T09:27:23.7492274Z [36;1msudo pvcreate -f $ROOT_LOOP_DEVNAME[0m
-2026-04-13T09:27:23.7492622Z [36;1mexport MNT_FREE_KB=$(df --block-size=1024 --output=avail /mnt | tail -1)[0m
-2026-04-13T09:27:23.7493012Z [36;1mexport MNT_LOOP_KB=$(expr $MNT_FREE_KB - 102400)[0m
-2026-04-13T09:27:23.7493348Z [36;1mexport MNT_LOOP_BYTES=$(expr $MNT_LOOP_KB \* 1024)[0m
-2026-04-13T09:27:23.7493856Z [36;1msudo fallocate -l $MNT_LOOP_BYTES /mnt/mnt.img[0m
-2026-04-13T09:27:23.7494246Z [36;1mexport MNT_LOOP_DEVNAME=$(sudo losetup -Pf --show /mnt/mnt.img)[0m
-2026-04-13T09:27:23.7494582Z [36;1msudo pvcreate -f $MNT_LOOP_DEVNAME[0m
-2026-04-13T09:27:23.7494901Z [36;1msudo vgcreate vgstorage $ROOT_LOOP_DEVNAME $MNT_LOOP_DEVNAME[0m
-2026-04-13T09:27:23.7495272Z [36;1msudo lvcreate -n lvstorage -l 100%FREE vgstorage[0m
-2026-04-13T09:27:23.7495616Z [36;1mexport LV_DEVNAME=$(sudo lvscan | awk -F "'" '{print $2}')[0m
-2026-04-13T09:27:23.7495944Z [36;1msudo mkfs.btrfs -L combinedisk $LV_DEVNAME[0m
-2026-04-13T09:27:23.7496275Z [36;1msudo mount -o compress=zstd $LV_DEVNAME $GITHUB_WORKSPACE[0m
-2026-04-13T09:27:23.7496608Z [36;1msudo chown -R runner:runner $GITHUB_WORKSPACE[0m
-2026-04-13T09:27:23.7496965Z [36;1mmkdir $GITHUB_WORKSPACE/tmp && chmod 777 $GITHUB_WORKSPACE/tmp[0m
-2026-04-13T09:27:23.7497308Z [36;1msudo cp -rp /tmp/* $GITHUB_WORKSPACE/tmp[0m
-2026-04-13T09:27:23.7497608Z [36;1msudo mount -B $GITHUB_WORKSPACE/tmp /tmp && df -hT[0m
-2026-04-13T09:27:23.7554402Z shell: /usr/bin/bash -e {0}
-2026-04-13T09:27:23.7554668Z env:
-2026-04-13T09:27:23.7554897Z   SOURCE_URL: https://github.com/bhrq12/lede.git
-2026-04-13T09:27:23.7555183Z   SOURCE_BRANCH: v2025.5.22
-2026-04-13T09:27:23.7555409Z   CONFIG_FILE: configs/AP4220-config.config
-2026-04-13T09:27:23.7555669Z   DIY_SCRIPT: diy-script-1.sh
-2026-04-13T09:27:23.7555885Z   TOOLCHAIN_TAG: Toolchain
-2026-04-13T09:27:23.7556077Z   CLASH_KERNEL: arm64
-2026-04-13T09:27:23.7556261Z   UPLOAD_BIN_DIR: false
-2026-04-13T09:27:23.7556444Z   FIRMWARE_RELEASE: true
-2026-04-13T09:27:23.7556646Z   FIRMWARE_TAG: ROOTFS_PLUS
-2026-04-13T09:27:23.7556834Z   OPENWRT_RELEASE: true
-2026-04-13T09:27:23.7557038Z   OPENWRT_TAG: AP4220_128m_PLUS_acctl
-2026-04-13T09:27:23.7557259Z   TZ: Asia/Shanghai
-2026-04-13T09:27:23.7557544Z   OPENWRT_PATH: /home/runner/work/OpenWrt-lean/OpenWrt-lean/workspace/openwrt
-2026-04-13T09:27:23.7558237Z   VERSION_INFO: Author: bhrq12<br/>date: 2025-05-22<br/>commit: Merge branch 'coolsnowwolf:master' into master<br/>commit hash: ac341d3755749ba0e6ec23ef9ec50617b5b6ae40
-2026-04-13T09:27:23.7558812Z   CURRENT_BRANCH: main
-2026-04-13T09:27:23.7558998Z   SOURCE_REPO: lede.git
-2026-04-13T09:27:23.7559178Z   DEVICE_TARGET: ipq40xx
-2026-04-13T09:27:23.7559373Z   DEVICE_SUBTARGET: generic
-2026-04-13T09:27:23.7559658Z   TOOLCHAIN_IMAGE: toolchain-lede.git-v2025.5.22-ipq40xx-generic
-2026-04-13T09:27:23.7559958Z ##[endgroup]
-2026-04-13T09:27:24.2229776Z   Physical volume "/dev/loop9" successfully created.
-2026-04-13T09:27:24.4395903Z   Physical volume "/dev/loop10" successfully created.
-2026-04-13T09:27:24.4747411Z   Volume group "vgstorage" successfully created
-2026-04-13T09:27:24.5607360Z   Logical volume "lvstorage" created.
-2026-04-13T09:27:24.9137112Z btrfs-progs v5.16.2
-2026-04-13T09:27:24.9137666Z See http://btrfs.wiki.kernel.org for more information.
-2026-04-13T09:27:24.9138083Z 
-2026-04-13T09:27:24.9138372Z Performing full device TRIM /dev/vgstorage/lvstorage (100.94GiB) ...
-2026-04-13T09:27:24.9139226Z NOTE: several default settings have changed in version 5.15, please make sure
-2026-04-13T09:27:24.9139586Z       this does not affect your deployments:
-2026-04-13T09:27:24.9139925Z       - DUP for metadata (-m dup)
-2026-04-13T09:27:24.9140208Z       - enabled no-holes (-O no-holes)
-2026-04-13T09:27:24.9140753Z       - enabled free-space-tree (-R free-space-tree)
-2026-04-13T09:27:24.9141028Z 
-2026-04-13T09:27:24.9141140Z Label:              combinedisk
-2026-04-13T09:27:24.9141454Z UUID:               3feef492-d9c6-48ea-9cd6-680ce54fe696
-2026-04-13T09:27:24.9141810Z Node size:          16384
-2026-04-13T09:27:24.9142003Z Sector size:        4096
-2026-04-13T09:27:24.9142207Z Filesystem size:    100.94GiB
-2026-04-13T09:27:24.9142415Z Block group profiles:
-2026-04-13T09:27:24.9142621Z   Data:             single            8.00MiB
-2026-04-13T09:27:24.9142866Z   Metadata:         DUP               1.00GiB
-2026-04-13T09:27:24.9143116Z   System:           DUP               8.00MiB
-2026-04-13T09:27:24.9143431Z SSD detected:       no
-2026-04-13T09:27:24.9143772Z Zoned device:       no
-2026-04-13T09:27:24.9144010Z Incompat features:  extref, skinny-metadata, no-holes
-2026-04-13T09:27:24.9144289Z Runtime features:   free-space-tree
-2026-04-13T09:27:24.9144521Z Checksum:           crc32c
-2026-04-13T09:27:24.9144720Z Number of devices:  1
-2026-04-13T09:27:24.9144977Z Devices:
-2026-04-13T09:27:24.9145136Z    ID        SIZE  PATH
-2026-04-13T09:27:24.9145410Z     1   100.94GiB  /dev/vgstorage/lvstorage
-2026-04-13T09:27:24.9145569Z 
-2026-04-13T09:27:24.9662099Z Filesystem                      Type      Size  Used Avail Use% Mounted on
-2026-04-13T09:27:24.9662596Z /dev/root                       ext4      146G   45G  102G  31% /
-2026-04-13T09:27:24.9662950Z tmpfs                           tmpfs     7.9G  172K  7.9G   1% /dev/shm
-2026-04-13T09:27:24.9663497Z tmpfs                           tmpfs     3.2G  1.4M  3.2G   1% /run
-2026-04-13T09:27:24.9664275Z tmpfs                           tmpfs     5.0M     0  5.0M   0% /run/lock
-2026-04-13T09:27:24.9664882Z efivarfs                        efivarfs  128M  9.6K  128M   1% /sys/firmware/efi/efivars
-2026-04-13T09:27:24.9665526Z /dev/sda15                      vfat      105M  6.1M   99M   6% /boot/efi
-2026-04-13T09:27:24.9665847Z tmpfs                           tmpfs     1.6G   12K  1.6G   1% /run/user/1001
-2026-04-13T09:27:24.9666178Z tmpfs                           tmpfs     7.9G     0  7.9G   0% /run/qemu
-2026-04-13T09:27:24.9666638Z /dev/mapper/vgstorage-lvstorage btrfs     101G  5.9M   99G   1% /home/runner/work/OpenWrt-lean/OpenWrt-lean
+﻿2026-04-13T11:21:34.0251638Z ##[group]Run sudo swapoff -a && sudo rm -f /mnt/swapfile
+2026-04-13T11:21:34.0252207Z [36;1msudo swapoff -a && sudo rm -f /mnt/swapfile[0m
+2026-04-13T11:21:34.0252801Z [36;1mexport ROOT_FREE_KB=$(df --block-size=1024 --output=avail / | tail -1)[0m
+2026-04-13T11:21:34.0253608Z [36;1mexport ROOT_LOOP_KB=$(expr $ROOT_FREE_KB - 1048576)[0m
+2026-04-13T11:21:34.0254148Z [36;1mexport ROOT_LOOP_BYTES=$(expr $ROOT_LOOP_KB \* 1024)[0m
+2026-04-13T11:21:34.0254674Z [36;1msudo fallocate -l $ROOT_LOOP_BYTES /root.img[0m
+2026-04-13T11:21:34.0255205Z [36;1mexport ROOT_LOOP_DEVNAME=$(sudo losetup -Pf --show /root.img)[0m
+2026-04-13T11:21:34.0255712Z [36;1msudo pvcreate -f $ROOT_LOOP_DEVNAME[0m
+2026-04-13T11:21:34.0256293Z [36;1mexport MNT_FREE_KB=$(df --block-size=1024 --output=avail /mnt | tail -1)[0m
+2026-04-13T11:21:34.0256920Z [36;1mexport MNT_LOOP_KB=$(expr $MNT_FREE_KB - 102400)[0m
+2026-04-13T11:21:34.0257408Z [36;1mexport MNT_LOOP_BYTES=$(expr $MNT_LOOP_KB \* 1024)[0m
+2026-04-13T11:21:34.0257919Z [36;1msudo fallocate -l $MNT_LOOP_BYTES /mnt/mnt.img[0m
+2026-04-13T11:21:34.0258545Z [36;1mexport MNT_LOOP_DEVNAME=$(sudo losetup -Pf --show /mnt/mnt.img)[0m
+2026-04-13T11:21:34.0259085Z [36;1msudo pvcreate -f $MNT_LOOP_DEVNAME[0m
+2026-04-13T11:21:34.0259566Z [36;1msudo vgcreate vgstorage $ROOT_LOOP_DEVNAME $MNT_LOOP_DEVNAME[0m
+2026-04-13T11:21:34.0260160Z [36;1msudo lvcreate -n lvstorage -l 100%FREE vgstorage[0m
+2026-04-13T11:21:34.0260754Z [36;1mexport LV_DEVNAME=$(sudo lvscan | awk -F "'" '{print $2}')[0m
+2026-04-13T11:21:34.0261266Z [36;1msudo mkfs.btrfs -L combinedisk $LV_DEVNAME[0m
+2026-04-13T11:21:34.0261789Z [36;1msudo mount -o compress=zstd $LV_DEVNAME $GITHUB_WORKSPACE[0m
+2026-04-13T11:21:34.0262348Z [36;1msudo chown -R runner:runner $GITHUB_WORKSPACE[0m
+2026-04-13T11:21:34.0262914Z [36;1mmkdir $GITHUB_WORKSPACE/tmp && chmod 777 $GITHUB_WORKSPACE/tmp[0m
+2026-04-13T11:21:34.0263911Z [36;1msudo cp -rp /tmp/* $GITHUB_WORKSPACE/tmp[0m
+2026-04-13T11:21:34.0264375Z [36;1msudo mount -B $GITHUB_WORKSPACE/tmp /tmp && df -hT[0m
+2026-04-13T11:21:34.0353215Z shell: /usr/bin/bash -e {0}
+2026-04-13T11:21:34.0353469Z env:
+2026-04-13T11:21:34.0353701Z   SOURCE_URL: https://github.com/bhrq12/lede.git
+2026-04-13T11:21:34.0353996Z   SOURCE_BRANCH: v2025.5.22
+2026-04-13T11:21:34.0354232Z   CONFIG_FILE: configs/AP4220-config.config
+2026-04-13T11:21:34.0354496Z   DIY_SCRIPT: diy-script-1.sh
+2026-04-13T11:21:34.0354724Z   TOOLCHAIN_TAG: Toolchain
+2026-04-13T11:21:34.0354927Z   CLASH_KERNEL: arm64
+2026-04-13T11:21:34.0355121Z   UPLOAD_BIN_DIR: false
+2026-04-13T11:21:34.0355318Z   FIRMWARE_RELEASE: true
+2026-04-13T11:21:34.0355521Z   FIRMWARE_TAG: ROOTFS_PLUS
+2026-04-13T11:21:34.0355727Z   OPENWRT_RELEASE: true
+2026-04-13T11:21:34.0355921Z   OPENWRT_TAG: AP4220_128m_PLUS_acctl
+2026-04-13T11:21:34.0356149Z   TZ: Asia/Shanghai
+2026-04-13T11:21:34.0356467Z   OPENWRT_PATH: /home/runner/work/OpenWrt-lean/OpenWrt-lean/workspace/openwrt
+2026-04-13T11:21:34.0357196Z   VERSION_INFO: Author: bhrq12<br/>date: 2025-05-22<br/>commit: Merge branch 'coolsnowwolf:master' into master<br/>commit hash: ac341d3755749ba0e6ec23ef9ec50617b5b6ae40
+2026-04-13T11:21:34.0357785Z   CURRENT_BRANCH: main
+2026-04-13T11:21:34.0357993Z   SOURCE_REPO: lede.git
+2026-04-13T11:21:34.0358188Z   DEVICE_TARGET: ipq40xx
+2026-04-13T11:21:34.0358383Z   DEVICE_SUBTARGET: generic
+2026-04-13T11:21:34.0358675Z   TOOLCHAIN_IMAGE: toolchain-lede.git-v2025.5.22-ipq40xx-generic
+2026-04-13T11:21:34.0358984Z ##[endgroup]
+2026-04-13T11:21:34.6428219Z   Physical volume "/dev/loop9" successfully created.
+2026-04-13T11:21:35.3423682Z   Physical volume "/dev/loop10" successfully created.
+2026-04-13T11:21:35.4228318Z   Volume group "vgstorage" successfully created
+2026-04-13T11:21:35.6299661Z   Logical volume "lvstorage" created.
+2026-04-13T11:21:36.0769549Z btrfs-progs v5.16.2
+2026-04-13T11:21:36.0770289Z See http://btrfs.wiki.kernel.org for more information.
+2026-04-13T11:21:36.0770626Z 
+2026-04-13T11:21:36.0770815Z Performing full device TRIM /dev/vgstorage/lvstorage (100.95GiB) ...
+2026-04-13T11:21:36.0771771Z NOTE: several default settings have changed in version 5.15, please make sure
+2026-04-13T11:21:36.0772250Z       this does not affect your deployments:
+2026-04-13T11:21:36.0772516Z       - DUP for metadata (-m dup)
+2026-04-13T11:21:36.0772769Z       - enabled no-holes (-O no-holes)
+2026-04-13T11:21:36.0773399Z       - enabled free-space-tree (-R free-space-tree)
+2026-04-13T11:21:36.0773710Z 
+2026-04-13T11:21:36.0773819Z Label:              combinedisk
+2026-04-13T11:21:36.0774154Z UUID:               20a873d4-649f-42c4-bddd-51db994740cb
+2026-04-13T11:21:36.0774549Z Node size:          16384
+2026-04-13T11:21:36.0774826Z Sector size:        4096
+2026-04-13T11:21:36.0775102Z Filesystem size:    100.95GiB
+2026-04-13T11:21:36.0775412Z Block group profiles:
+2026-04-13T11:21:36.0775790Z   Data:             single            8.00MiB
+2026-04-13T11:21:36.0776164Z   Metadata:         DUP               1.00GiB
+2026-04-13T11:21:36.0776522Z   System:           DUP               8.00MiB
+2026-04-13T11:21:36.0776878Z SSD detected:       no
+2026-04-13T11:21:36.0777137Z Zoned device:       no
+2026-04-13T11:21:36.0777454Z Incompat features:  extref, skinny-metadata, no-holes
+2026-04-13T11:21:36.0777888Z Runtime features:   free-space-tree
+2026-04-13T11:21:36.0778218Z Checksum:           crc32c
+2026-04-13T11:21:36.0778506Z Number of devices:  1
+2026-04-13T11:21:36.0778758Z Devices:
+2026-04-13T11:21:36.0778995Z    ID        SIZE  PATH
+2026-04-13T11:21:36.0779291Z     1   100.95GiB  /dev/vgstorage/lvstorage
+2026-04-13T11:21:36.0779549Z 
+2026-04-13T11:21:36.1554742Z Filesystem                      Type      Size  Used Avail Use% Mounted on
+2026-04-13T11:21:36.1555851Z /dev/root                       ext4      146G   45G  102G  31% /
+2026-04-13T11:21:36.1556451Z tmpfs                           tmpfs     7.9G  172K  7.9G   1% /dev/shm
+2026-04-13T11:21:36.1557336Z tmpfs                           tmpfs     3.2G  1.4M  3.2G   1% /run
+2026-04-13T11:21:36.1557808Z tmpfs                           tmpfs     5.0M     0  5.0M   0% /run/lock
+2026-04-13T11:21:36.1558402Z efivarfs                        efivarfs  128M   34K  128M   1% /sys/firmware/efi/efivars
+2026-04-13T11:21:36.1558933Z /dev/sda15                      vfat      105M  6.1M   99M   6% /boot/efi
+2026-04-13T11:21:36.1559403Z tmpfs                           tmpfs     1.6G   12K  1.6G   1% /run/user/1001
+2026-04-13T11:21:36.1559866Z tmpfs                           tmpfs     7.9G     0  7.9G   0% /run/qemu
+2026-04-13T11:21:36.1560574Z /dev/mapper/vgstorage-lvstorage btrfs     101G  5.9M   99G   1% /home/runner/work/OpenWrt-lean/OpenWrt-lean

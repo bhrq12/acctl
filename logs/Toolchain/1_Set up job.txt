@@ -1,0 +1,46 @@
+﻿2026-04-13T10:53:24.3290842Z Current runner version: '2.333.1'
+2026-04-13T10:53:24.3317285Z ##[group]Runner Image Provisioner
+2026-04-13T10:53:24.3318149Z Hosted Compute Agent
+2026-04-13T10:53:24.3318831Z Version: 20260213.493
+2026-04-13T10:53:24.3319432Z Commit: 5c115507f6dd24b8de37d8bbe0bb4509d0cc0fa3
+2026-04-13T10:53:24.3320117Z Build Date: 2026-02-13T00:28:41Z
+2026-04-13T10:53:24.3320813Z Worker ID: {35866153-3b9b-4558-aa9b-00b518ee3cce}
+2026-04-13T10:53:24.3321535Z Azure Region: westcentralus
+2026-04-13T10:53:24.3322083Z ##[endgroup]
+2026-04-13T10:53:24.3323656Z ##[group]Operating System
+2026-04-13T10:53:24.3324293Z Ubuntu
+2026-04-13T10:53:24.3324746Z 22.04.5
+2026-04-13T10:53:24.3325325Z LTS
+2026-04-13T10:53:24.3325756Z ##[endgroup]
+2026-04-13T10:53:24.3326274Z ##[group]Runner Image
+2026-04-13T10:53:24.3326808Z Image: ubuntu-22.04
+2026-04-13T10:53:24.3327370Z Version: 20260406.82.1
+2026-04-13T10:53:24.3328332Z Included Software: https://github.com/actions/runner-images/blob/ubuntu22/20260406.82/images/ubuntu/Ubuntu2204-Readme.md
+2026-04-13T10:53:24.3330061Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu22%2F20260406.82
+2026-04-13T10:53:24.3331036Z ##[endgroup]
+2026-04-13T10:53:24.3333881Z ##[group]GITHUB_TOKEN Permissions
+2026-04-13T10:53:24.3335865Z Actions: write
+2026-04-13T10:53:24.3336539Z ArtifactMetadata: write
+2026-04-13T10:53:24.3337085Z Attestations: write
+2026-04-13T10:53:24.3337617Z Checks: write
+2026-04-13T10:53:24.3338092Z Contents: write
+2026-04-13T10:53:24.3338695Z Deployments: write
+2026-04-13T10:53:24.3339219Z Discussions: write
+2026-04-13T10:53:24.3340089Z Issues: write
+2026-04-13T10:53:24.3340690Z Metadata: read
+2026-04-13T10:53:24.3341162Z Models: read
+2026-04-13T10:53:24.3341669Z Packages: write
+2026-04-13T10:53:24.3342207Z Pages: write
+2026-04-13T10:53:24.3342808Z PullRequests: write
+2026-04-13T10:53:24.3343574Z RepositoryProjects: write
+2026-04-13T10:53:24.3344184Z SecurityEvents: write
+2026-04-13T10:53:24.3344753Z Statuses: write
+2026-04-13T10:53:24.3345235Z ##[endgroup]
+2026-04-13T10:53:24.3347467Z Secret source: Actions
+2026-04-13T10:53:24.3348132Z Prepare workflow directory
+2026-04-13T10:53:24.3792779Z Prepare all required actions
+2026-04-13T10:53:24.3831688Z Getting action download info
+2026-04-13T10:53:24.7945959Z Download action repository 'actions/checkout@main' (SHA:0c366fd6a839edf440554fa01a7085ccba70ac98)
+2026-04-13T10:53:24.9749361Z Download action repository 'mknejp/delete-release-assets@v1' (SHA:384aee93a11d5de67dd27bcede7cae808a890807)
+2026-04-13T10:53:25.7325669Z Download action repository 'ncipollo/release-action@v1' (SHA:339a81892b84b4eeb0f6e744e4574d79d0d9b8dd)
+2026-04-13T10:53:26.5537532Z Complete job name: Toolchain

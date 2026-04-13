@@ -1,57 +1,57 @@
-﻿2026-04-13T09:27:24.9690315Z ##[group]Run cd $GITHUB_WORKSPACE
-2026-04-13T09:27:24.9690620Z [36;1mcd $GITHUB_WORKSPACE[0m
-2026-04-13T09:27:24.9690818Z [36;1mgit init[0m
-2026-04-13T09:27:24.9691103Z [36;1mgit remote add origin https://github.com/$GITHUB_REPOSITORY[0m
-2026-04-13T09:27:24.9691411Z [36;1mgit fetch[0m
-2026-04-13T09:27:24.9691621Z [36;1mgit checkout -t origin/$CURRENT_BRANCH[0m
-2026-04-13T09:27:24.9735683Z shell: /usr/bin/bash -e {0}
-2026-04-13T09:27:24.9735974Z env:
-2026-04-13T09:27:24.9736239Z   SOURCE_URL: https://github.com/bhrq12/lede.git
-2026-04-13T09:27:24.9736567Z   SOURCE_BRANCH: v2025.5.22
-2026-04-13T09:27:24.9736833Z   CONFIG_FILE: configs/AP4220-config.config
-2026-04-13T09:27:24.9737157Z   DIY_SCRIPT: diy-script-1.sh
-2026-04-13T09:27:24.9737408Z   TOOLCHAIN_TAG: Toolchain
-2026-04-13T09:27:24.9737643Z   CLASH_KERNEL: arm64
-2026-04-13T09:27:24.9737859Z   UPLOAD_BIN_DIR: false
-2026-04-13T09:27:24.9738108Z   FIRMWARE_RELEASE: true
-2026-04-13T09:27:24.9738340Z   FIRMWARE_TAG: ROOTFS_PLUS
-2026-04-13T09:27:24.9738626Z   OPENWRT_RELEASE: true
-2026-04-13T09:27:24.9738870Z   OPENWRT_TAG: AP4220_128m_PLUS_acctl
-2026-04-13T09:27:24.9739126Z   TZ: Asia/Shanghai
-2026-04-13T09:27:24.9739487Z   OPENWRT_PATH: /home/runner/work/OpenWrt-lean/OpenWrt-lean/workspace/openwrt
-2026-04-13T09:27:24.9740325Z   VERSION_INFO: Author: bhrq12<br/>date: 2025-05-22<br/>commit: Merge branch 'coolsnowwolf:master' into master<br/>commit hash: ac341d3755749ba0e6ec23ef9ec50617b5b6ae40
-2026-04-13T09:27:24.9741010Z   CURRENT_BRANCH: main
-2026-04-13T09:27:24.9741239Z   SOURCE_REPO: lede.git
-2026-04-13T09:27:24.9741463Z   DEVICE_TARGET: ipq40xx
-2026-04-13T09:27:24.9741694Z   DEVICE_SUBTARGET: generic
-2026-04-13T09:27:24.9742190Z   TOOLCHAIN_IMAGE: toolchain-lede.git-v2025.5.22-ipq40xx-generic
-2026-04-13T09:27:24.9742562Z ##[endgroup]
-2026-04-13T09:27:25.0002450Z hint: Using 'master' as the name for the initial branch. This default branch name
-2026-04-13T09:27:25.0003028Z hint: will change to "main" in Git 3.0. To configure the initial branch name
-2026-04-13T09:27:25.0003480Z hint: to use in all of your new repositories, which will suppress this warning,
-2026-04-13T09:27:25.0003988Z hint: call:
-2026-04-13T09:27:25.0004148Z hint:
-2026-04-13T09:27:25.0004384Z hint: 	git config --global init.defaultBranch <name>
-2026-04-13T09:27:25.0004635Z hint:
-2026-04-13T09:27:25.0004882Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
-2026-04-13T09:27:25.0005400Z hint: 'development'. The just-created branch can be renamed via this command:
-2026-04-13T09:27:25.0005899Z hint:
-2026-04-13T09:27:25.0006161Z hint: 	git branch -m <name>
-2026-04-13T09:27:25.0006495Z hint:
-2026-04-13T09:27:25.0006961Z hint: Disable this message with "git config set advice.defaultBranchName false"
-2026-04-13T09:27:25.0007725Z Initialized empty Git repository in /home/runner/work/OpenWrt-lean/OpenWrt-lean/.git/
-2026-04-13T09:27:25.5586531Z From https://github.com/bhrq12/OpenWrt-lean
-2026-04-13T09:27:25.5587103Z  * [new branch]      main        -> origin/main
-2026-04-13T09:27:25.5587582Z  * [new branch]      v1.0        -> origin/v1.0
-2026-04-13T09:27:25.5587838Z  * [new branch]      v1.1        -> origin/v1.1
-2026-04-13T09:27:25.5588090Z  * [new branch]      v1.2        -> origin/v1.2
-2026-04-13T09:27:25.5588391Z  * [new branch]      v2025.11.30 -> origin/v2025.11.30
-2026-04-13T09:27:25.5702407Z  * [new tag]         AP4220_PLUS -> AP4220_PLUS
-2026-04-13T09:27:25.5702980Z  * [new tag]         AP8220_128m_PLUS -> AP8220_128m_PLUS
-2026-04-13T09:27:25.5703468Z  * [new tag]         ARM         -> ARM
-2026-04-13T09:27:25.5704019Z  * [new tag]         ROOTFS_PLUS -> ROOTFS_PLUS
-2026-04-13T09:27:25.5704475Z  * [new tag]         ROOTFS_PLUS_immortalwrt -> ROOTFS_PLUS_immortalwrt
-2026-04-13T09:27:25.5704831Z  * [new tag]         Toolchain   -> Toolchain
-2026-04-13T09:27:25.5705131Z  * [new tag]         Toolchain_immortalwrt -> Toolchain_immortalwrt
-2026-04-13T09:27:25.5850977Z Switched to a new branch 'main'
-2026-04-13T09:27:25.5851911Z branch 'main' set up to track 'origin/main'.
+﻿2026-04-13T11:21:36.1597193Z ##[group]Run cd $GITHUB_WORKSPACE
+2026-04-13T11:21:36.1597498Z [36;1mcd $GITHUB_WORKSPACE[0m
+2026-04-13T11:21:36.1597707Z [36;1mgit init[0m
+2026-04-13T11:21:36.1597995Z [36;1mgit remote add origin https://github.com/$GITHUB_REPOSITORY[0m
+2026-04-13T11:21:36.1598408Z [36;1mgit fetch[0m
+2026-04-13T11:21:36.1598628Z [36;1mgit checkout -t origin/$CURRENT_BRANCH[0m
+2026-04-13T11:21:36.1690881Z shell: /usr/bin/bash -e {0}
+2026-04-13T11:21:36.1691203Z env:
+2026-04-13T11:21:36.1691487Z   SOURCE_URL: https://github.com/bhrq12/lede.git
+2026-04-13T11:21:36.1691846Z   SOURCE_BRANCH: v2025.5.22
+2026-04-13T11:21:36.1692139Z   CONFIG_FILE: configs/AP4220-config.config
+2026-04-13T11:21:36.1692466Z   DIY_SCRIPT: diy-script-1.sh
+2026-04-13T11:21:36.1692737Z   TOOLCHAIN_TAG: Toolchain
+2026-04-13T11:21:36.1693277Z   CLASH_KERNEL: arm64
+2026-04-13T11:21:36.1693509Z   UPLOAD_BIN_DIR: false
+2026-04-13T11:21:36.1693806Z   FIRMWARE_RELEASE: true
+2026-04-13T11:21:36.1694082Z   FIRMWARE_TAG: ROOTFS_PLUS
+2026-04-13T11:21:36.1694420Z   OPENWRT_RELEASE: true
+2026-04-13T11:21:36.1694667Z   OPENWRT_TAG: AP4220_128m_PLUS_acctl
+2026-04-13T11:21:36.1694920Z   TZ: Asia/Shanghai
+2026-04-13T11:21:36.1695313Z   OPENWRT_PATH: /home/runner/work/OpenWrt-lean/OpenWrt-lean/workspace/openwrt
+2026-04-13T11:21:36.1696290Z   VERSION_INFO: Author: bhrq12<br/>date: 2025-05-22<br/>commit: Merge branch 'coolsnowwolf:master' into master<br/>commit hash: ac341d3755749ba0e6ec23ef9ec50617b5b6ae40
+2026-04-13T11:21:36.1697048Z   CURRENT_BRANCH: main
+2026-04-13T11:21:36.1697325Z   SOURCE_REPO: lede.git
+2026-04-13T11:21:36.1697580Z   DEVICE_TARGET: ipq40xx
+2026-04-13T11:21:36.1697790Z   DEVICE_SUBTARGET: generic
+2026-04-13T11:21:36.1698190Z   TOOLCHAIN_IMAGE: toolchain-lede.git-v2025.5.22-ipq40xx-generic
+2026-04-13T11:21:36.1698605Z ##[endgroup]
+2026-04-13T11:21:36.3054191Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-04-13T11:21:36.3054989Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-04-13T11:21:36.3055463Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-04-13T11:21:36.3055811Z hint: call:
+2026-04-13T11:21:36.3055973Z hint:
+2026-04-13T11:21:36.3056223Z hint: 	git config --global init.defaultBranch <name>
+2026-04-13T11:21:36.3056506Z hint:
+2026-04-13T11:21:36.3056754Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-04-13T11:21:36.3057191Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-04-13T11:21:36.3057514Z hint:
+2026-04-13T11:21:36.3057677Z hint: 	git branch -m <name>
+2026-04-13T11:21:36.3057868Z hint:
+2026-04-13T11:21:36.3058140Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-04-13T11:21:36.3092649Z Initialized empty Git repository in /home/runner/work/OpenWrt-lean/OpenWrt-lean/.git/
+2026-04-13T11:21:36.7791198Z From https://github.com/bhrq12/OpenWrt-lean
+2026-04-13T11:21:36.7791778Z  * [new branch]      main        -> origin/main
+2026-04-13T11:21:36.7792250Z  * [new branch]      v1.0        -> origin/v1.0
+2026-04-13T11:21:36.7792656Z  * [new branch]      v1.1        -> origin/v1.1
+2026-04-13T11:21:36.7793246Z  * [new branch]      v1.2        -> origin/v1.2
+2026-04-13T11:21:36.7793832Z  * [new branch]      v2025.11.30 -> origin/v2025.11.30
+2026-04-13T11:21:36.7931607Z  * [new tag]         AP4220_PLUS -> AP4220_PLUS
+2026-04-13T11:21:36.7932107Z  * [new tag]         AP8220_128m_PLUS -> AP8220_128m_PLUS
+2026-04-13T11:21:36.7932470Z  * [new tag]         ARM         -> ARM
+2026-04-13T11:21:36.7932814Z  * [new tag]         ROOTFS_PLUS -> ROOTFS_PLUS
+2026-04-13T11:21:36.7933911Z  * [new tag]         ROOTFS_PLUS_immortalwrt -> ROOTFS_PLUS_immortalwrt
+2026-04-13T11:21:36.7934405Z  * [new tag]         Toolchain   -> Toolchain
+2026-04-13T11:21:36.7934888Z  * [new tag]         Toolchain_immortalwrt -> Toolchain_immortalwrt
+2026-04-13T11:21:36.8162257Z Switched to a new branch 'main'
+2026-04-13T11:21:36.8165296Z branch 'main' set up to track 'origin/main'.
