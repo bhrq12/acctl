@@ -1,5 +1,0 @@
-# Placeholder config - 请用实际 menuconfig 导出的配置替换
-# 生成方法：./scripts/diffconfig（需先在本地编译环境运行 menuconfig）
-CONFIG_TARGET_ramips=y
-CONFIG_TARGET_ramips_mt7621=y
-CONFIG_TARGET_ramips_mt7621_DEVICE_xiaomi_mi-router-ax3000t=y

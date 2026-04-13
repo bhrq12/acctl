@@ -1,4 +1,0 @@
-# Placeholder config - 请用实际 menuconfig 导出的配置替换
-# 生成方法：./scripts/diffconfig（需先在本地编译环境运行 menuconfig）
-CONFIG_TARGET_bcm2711=y
-CONFIG_TARGET_bcm2711_DEVICE_rpi-4=y
