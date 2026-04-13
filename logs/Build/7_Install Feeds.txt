@@ -1,0 +1,75 @@
+﻿2026-04-13T09:27:35.2705356Z ##[group]Run cd $OPENWRT_PATH
+2026-04-13T09:27:35.2705643Z [36;1mcd $OPENWRT_PATH[0m
+2026-04-13T09:27:35.2705871Z [36;1m./scripts/feeds update -a[0m
+2026-04-13T09:27:35.2706124Z [36;1m./scripts/feeds install -a[0m
+2026-04-13T09:27:35.2746641Z shell: /usr/bin/bash -e {0}
+2026-04-13T09:27:35.2746905Z env:
+2026-04-13T09:27:35.2747124Z   SOURCE_URL: https://github.com/bhrq12/lede.git
+2026-04-13T09:27:35.2747403Z   SOURCE_BRANCH: v2025.5.22
+2026-04-13T09:27:35.2747634Z   CONFIG_FILE: configs/AP4220-config.config
+2026-04-13T09:27:35.2747880Z   DIY_SCRIPT: diy-script-1.sh
+2026-04-13T09:27:35.2748093Z   TOOLCHAIN_TAG: Toolchain
+2026-04-13T09:27:35.2748284Z   CLASH_KERNEL: arm64
+2026-04-13T09:27:35.2748470Z   UPLOAD_BIN_DIR: false
+2026-04-13T09:27:35.2748651Z   FIRMWARE_RELEASE: true
+2026-04-13T09:27:35.2748850Z   FIRMWARE_TAG: ROOTFS_PLUS
+2026-04-13T09:27:35.2749045Z   OPENWRT_RELEASE: true
+2026-04-13T09:27:35.2749241Z   OPENWRT_TAG: AP4220_128m_PLUS_acctl
+2026-04-13T09:27:35.2749457Z   TZ: Asia/Shanghai
+2026-04-13T09:27:35.2749783Z   OPENWRT_PATH: /home/runner/work/OpenWrt-lean/OpenWrt-lean/workspace/openwrt
+2026-04-13T09:27:35.2750477Z   VERSION_INFO: Author: bhrq12<br/>date: 2025-05-22<br/>commit: Merge branch 'coolsnowwolf:master' into master<br/>commit hash: ac341d3755749ba0e6ec23ef9ec50617b5b6ae40
+2026-04-13T09:27:35.2751058Z   CURRENT_BRANCH: main
+2026-04-13T09:27:35.2751242Z   SOURCE_REPO: lede.git
+2026-04-13T09:27:35.2751431Z   DEVICE_TARGET: ipq40xx
+2026-04-13T09:27:35.2751652Z   DEVICE_SUBTARGET: generic
+2026-04-13T09:27:35.2751947Z   TOOLCHAIN_IMAGE: toolchain-lede.git-v2025.5.22-ipq40xx-generic
+2026-04-13T09:27:35.2752242Z ##[endgroup]
+2026-04-13T09:27:35.3099052Z Updating feed 'packages' from 'https://github.com/coolsnowwolf/packages' ...
+2026-04-13T09:27:35.5617776Z From https://github.com/coolsnowwolf/packages
+2026-04-13T09:27:35.5618249Z    2770713..f45f1a0  master     -> origin/master
+2026-04-13T09:27:36.5486333Z Updating 2770713..f45f1a0
+2026-04-13T09:27:36.5486647Z Fast-forward
+2026-04-13T09:27:36.5518951Z  lang/golang/golang/Makefile | 4 ++--
+2026-04-13T09:27:36.5519506Z  1 file changed, 2 insertions(+), 2 deletions(-)
+2026-04-13T09:27:36.5738507Z Updating feed 'luci' from 'https://github.com/coolsnowwolf/luci.git;openwrt-23.05' ...
+2026-04-13T09:27:36.8378772Z From https://github.com/coolsnowwolf/luci
+2026-04-13T09:27:36.8379338Z    3276e3a..03b3a44  openwrt-23.05 -> origin/openwrt-23.05
+2026-04-13T09:27:38.4958812Z Updating 3276e3a..03b3a44
+2026-04-13T09:27:38.4959299Z Fast-forward
+2026-04-13T09:27:38.5008544Z  modules/luci-base/root/usr/share/rpcd/ucode/luci   |  18 +-
+2026-04-13T09:27:38.5009373Z  .../luci-static/resources/view/network/wireless.js | 565 ++++++++++++++++++---
+2026-04-13T09:27:38.5010065Z  .../usr/share/rpcd/acl.d/luci-mod-network.json     |   3 +-
+2026-04-13T09:27:38.5010743Z  .../resources/view/status/channel_analysis.js      | 338 +++++++++---
+2026-04-13T09:27:38.5011473Z  .../resources/view/status/include/15_ports.js      | 293 ++++++++++-
+2026-04-13T09:27:38.5012053Z  .../resources/view/status/include/60_wifi.js       | 116 +++++
+2026-04-13T09:27:38.5012490Z  .../share/rpcd/acl.d/luci-mod-status-index.json    |   2 +-
+2026-04-13T09:27:38.5012825Z  .../root/usr/share/rpcd/acl.d/luci-mod-status.json |  12 +-
+2026-04-13T09:27:38.5013153Z  .../htdocs/luci-static/design/css/style.css        | 131 ++++-
+2026-04-13T09:27:38.5013942Z  .../htdocs/luci-static/design/js/style.js          |  10 +-
+2026-04-13T09:27:38.5014256Z  10 files changed, 1311 insertions(+), 177 deletions(-)
+2026-04-13T09:27:38.5212285Z Updating feed 'routing' from 'https://github.com/coolsnowwolf/routing' ...
+2026-04-13T09:27:38.7262123Z Already up to date.
+2026-04-13T09:27:38.7446771Z Updating feed 'telephony' from 'https://github.com/coolsnowwolf/telephony.git' ...
+2026-04-13T09:27:38.9119716Z Already up to date.
+2026-04-13T09:27:38.9354325Z Updating feed 'helloworld' from 'https://github.com/fw876/helloworld.git' ...
+2026-04-13T09:27:39.1051207Z Already up to date.
+2026-04-13T09:27:39.1226614Z Create index file './feeds/packages.index' 
+2026-04-13T09:27:39.9203084Z [M
+2026-04-13T09:27:40.2596251Z Collecting package info: feeds/packages/lang/golang/golang[M
+2026-04-13T09:27:40.3121300Z Collecting package info: merging...[M
+2026-04-13T09:27:40.3136189Z 
+2026-04-13T09:27:40.5341521Z Collecting package info: doneCreate index file './feeds/luci.index' 
+2026-04-13T09:27:41.2098338Z Create index file './feeds/routing.index' 
+2026-04-13T09:27:41.7236542Z Create index file './feeds/telephony.index' 
+2026-04-13T09:27:42.2616940Z Create index file './feeds/helloworld.index' 
+2026-04-13T09:27:45.3554495Z 
+2026-04-13T09:27:48.9667122Z WARNING: Makefile 'package/feeds/packages/libmpc/Makefile' has a dependency on 'libmpfr', which does not exist
+2026-04-13T09:27:48.9963436Z WARNING: Makefile 'package/feeds/packages/openssh/Makefile' has a dependency on 'libcrypt-compat', which does not exist
+2026-04-13T09:27:48.9964647Z WARNING: Makefile 'package/feeds/packages/openssh/Makefile' has a dependency on 'libcrypt-compat', which does not exist
+2026-04-13T09:27:49.0020985Z WARNING: Makefile 'package/feeds/packages/python-gmpy2/Makefile' has a dependency on 'libmpfr', which does not exist
+2026-04-13T09:27:49.0042841Z WARNING: Makefile 'package/feeds/packages/python3/Makefile' has a dependency on 'libcrypt-compat', which does not exist
+2026-04-13T09:27:55.2627701Z Installing all packages from feed packages.
+2026-04-13T09:27:55.2628242Z Installing all packages from feed luci.
+2026-04-13T09:27:55.2628613Z Installing all packages from feed routing.
+2026-04-13T09:27:55.2628975Z Installing all packages from feed telephony.
+2026-04-13T09:27:55.2742317Z Installing all packages from feed helloworld.
