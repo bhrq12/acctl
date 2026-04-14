@@ -35,13 +35,7 @@
 db_t *db = NULL;
 struct tbl_col_t tables;
 
-/* json_attrs for resource.c (used by mjson parser) */
-const char *json_attrs[] = {
-    "ip_start",
-    "ip_end",
-    "ip_mask",
-    NULL
-};
+/* json_attrs moved to resource.c with correct type */
 
 /* Static error buffer */
 static char error_buf[256];

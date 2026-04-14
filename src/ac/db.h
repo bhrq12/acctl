@@ -54,8 +54,7 @@ typedef struct {
 extern db_t  *db;
 extern struct tbl_col_t tables;
 
-/* json_attrs for resource.c (mjson parser compatibility) */
-extern const char *json_attrs[];
+/* json_attrs for resource.c — defined in resource.c */
 
 /* ========================================================================
  * Core database operations

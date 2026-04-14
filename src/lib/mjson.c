@@ -337,7 +337,7 @@ static int json_internal_read_object(const char *cp,
 			*end = cp;
 		    return JSON_ERR_NOARRAY;
 		}
-		substatus = json_read_array(cp, &cursor->addr.array, &cp);
+		substatus = json_read_array(cp, cursor->addr.array, &cp);
 		if (substatus != 0)
 		    return substatus;
 		state = post_array;

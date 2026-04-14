@@ -31,9 +31,24 @@
 struct _ippool_t *ippool = NULL;
 struct resource_cfg_t resource;
 
-static const char *json_attrs[] = {
-	"ip_start", "ip_end", "ip_mask", NULL
-};
+static struct json_attr_t json_attrs[4];
+
+static void json_attrs_init(void)
+{
+	json_attrs[0] = (struct json_attr_t){
+		.attribute = "ip_start", .type = t_string,
+		.addr.string = resource.ip_start, .len = sizeof(resource.ip_start)
+	};
+	json_attrs[1] = (struct json_attr_t){
+		.attribute = "ip_end", .type = t_string,
+		.addr.string = resource.ip_end, .len = sizeof(resource.ip_end)
+	};
+	json_attrs[2] = (struct json_attr_t){
+		.attribute = "ip_mask", .type = t_string,
+		.addr.string = resource.ip_mask, .len = sizeof(resource.ip_mask)
+	};
+	json_attrs[3] = (struct json_attr_t){ .attribute = NULL }; /* sentinel */
+}
 
 /* ========================================================================
  * IP allocation
@@ -329,6 +344,9 @@ void *res_check(void *arg)
 
 void resource_init(void)
 {
+	/* Initialize mjson attribute descriptors */
+	json_attrs_init();
+
 	/* Initialize pool structure */
 	res_ip_init();
 
