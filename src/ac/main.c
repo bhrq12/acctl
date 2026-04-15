@@ -29,6 +29,7 @@
 #include <signal.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <string.h>
 #include <errno.h>
 
@@ -39,6 +40,7 @@
 #include "process.h"
 #include "netlayer.h"
 #include "resource.h"
+#include "dllayer.h"
 #include "sql.h"
 #include "sec.h"
 #include "log.h"

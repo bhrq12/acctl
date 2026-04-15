@@ -34,6 +34,7 @@
 #include "process.h"
 #include "apstatus.h"
 #include "sec.h"
+#include "aphash.h"
 
 #define SYSSTAT_LOCK()    pthread_mutex_lock(&sysstat.lock)
 #define SYSSTAT_UNLOCK() pthread_mutex_unlock(&sysstat.lock)

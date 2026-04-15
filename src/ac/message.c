@@ -29,6 +29,7 @@
 #include "aphash.h"
 #include "process.h"
 #include "apstatus.h"
+#include "dllayer.h"
 
 #define MSG_QUEUE_MAX  (256)
 
