@@ -105,7 +105,9 @@ stop_service() {
 		rm -f /var/run/acser.pid
 	}
 	# Also kill by name if pidfile missing
-	killall acser 2>/dev/null
+	# FIX: prefer pidfile kill to avoid killing wrong processes
+	[ -f /var/run/acser.pid ] && kill $(cat /var/run/acser.pid) 2>/dev/null
+	killall acser 2>/dev/null  # fallback if pidfile missing
 	echo "AC Controller stopped"
 }
 

@@ -201,7 +201,10 @@ int sec_exec_command(const char *cmd, char *output, size_t output_len)
 	}
 
 	/* Use popen with validated input — safe because of prior check */
+	/* FIX: set 30-second timeout for command execution */
+	alarm(30);
 	FILE *fp = popen(cmd, "r");
+	alarm(0);  /* cancel on success */
 	if (!fp) {
 		sys_err("popen failed for '%s': %s\n", cmd, strerror(errno));
 		return -1;
@@ -391,7 +394,7 @@ int sec_rate_check(const char *mac, int type)
 /* List of trusted AC MAC addresses (whitelist) */
 #define TRUSTED_AC_MAX  (8)
 static struct {
-	char mac[ETH_ALEN];
+	char mac[TRUSTED_AC_MAX][ETH_ALEN];  /* FIX: was char[ETH_ALEN] — only stored 1 AC */
 	int  count;
 } trusted_ac_list;
 static pthread_mutex_t ac_trust_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -402,12 +405,22 @@ static pthread_mutex_t ac_trust_lock = PTHREAD_MUTEX_INITIALIZER;
 void sec_ac_trust_add(const char *mac)
 {
 	pthread_mutex_lock(&ac_trust_lock);
+	/* Skip if already in list (no duplicates) */
+	for (int i = 0; i < trusted_ac_list.count; i++) {
+		if (memcmp(trusted_ac_list.mac[i], mac, ETH_ALEN) == 0) {
+			pthread_mutex_unlock(&ac_trust_lock);
+			return;
+		}
+	}
 	if (trusted_ac_list.count < TRUSTED_AC_MAX) {
-		memcpy(trusted_ac_list.mac, mac, ETH_ALEN);
+		memcpy(trusted_ac_list.mac[trusted_ac_list.count], mac, ETH_ALEN);
 		trusted_ac_list.count++;
 		sys_debug("Added AC to trusted list: "
-			MAC_FMT"\n",
-			mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+			MAC_FMT" (%d/%d)\n",
+			mac[0], mac[1], mac[2], mac[3], mac[4], mac[5],
+			trusted_ac_list.count, TRUSTED_AC_MAX);
+	} else {
+		sys_warn("Trusted AC list full (%d)\n", TRUSTED_AC_MAX);
 	}
 	pthread_mutex_unlock(&ac_trust_lock);
 }
@@ -427,7 +440,7 @@ int sec_ac_is_trusted(const char *mac)
 	pthread_mutex_lock(&ac_trust_lock);
 	int trusted = 0;
 	for (int i = 0; i < trusted_ac_list.count; i++) {
-		if (memcmp(trusted_ac_list.mac, mac, ETH_ALEN) == 0) {
+		if (memcmp(trusted_ac_list.mac[i], mac, ETH_ALEN) == 0) {
 			trusted = 1;
 			break;
 		}

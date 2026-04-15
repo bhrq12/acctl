@@ -203,8 +203,10 @@ int tcp_rcv_msg(struct nettcp_t *tcp, char *data, int bufsize)
 		msg_len = (int)sizeof(struct msg_heartbeat_t);
 		break;
 	default:
-		/* Unknown type or MSG_AC_CMD (variable) */
-		break;
+		/* FIX: unknown message type -- log and return error */
+		sys_warn("tcp_rcv_msg: unknown msg_type=%d, dropping packet\n",
+			head->msg_type);
+		return -1;
 	}
 
 	if (msg_len > bufsize)

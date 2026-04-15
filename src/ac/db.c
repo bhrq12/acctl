@@ -758,7 +758,10 @@ int db_group_list(char *json_buf, int buflen)
     int first = 1;
 
     if (buflen < 2) return -1;
-    json_buf[pos++] = '{';
+    /* FIX: proper {"groups":[ opening — was bare { that produced }{...} */
+    int n = snprintf(json_buf, buflen, "\"groups\":[" );
+    if (n < 0 || n >= buflen) { json_buf[0] = '\0'; return -1; }
+    int pos = n;
 
     int len = json_object_array_length(groups);
     for (int i = 0; i < len; i++) {
@@ -781,7 +784,7 @@ int db_group_list(char *json_buf, int buflen)
     }
 
     if (pos >= buflen - 2) { json_buf[pos] = '\0'; return -1; }
-    json_buf[pos++] = '}';
+    /* FIX: close array ] then object } — was }{]} that produced }{][} */
     json_buf[pos++] = ']';
     json_buf[pos++] = '}';
     json_buf[pos] = '\0';

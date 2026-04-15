@@ -128,12 +128,17 @@ static int ac_connect(void)
 
 static void ac_disconnect(void)
 {
+	/* FIX: capture sock fd before releasing lock to avoid use-after-free */
+	int sock_to_close = -1;
 	SYSSTAT_LOCK();
 	if (sysstat.sock >= 0) {
-		delete_sockarr(sysstat.sock);
+		sock_to_close = sysstat.sock;
 		sysstat.sock = -1;
 	}
 	SYSSTAT_UNLOCK();
+	if (sock_to_close >= 0) {
+		delete_sockarr(sock_to_close);
+	}
 }
 
 /* ========================================================================

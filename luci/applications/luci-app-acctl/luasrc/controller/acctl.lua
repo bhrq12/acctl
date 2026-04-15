@@ -136,7 +136,7 @@ function api_aps()
     if mac and mac ~= "" then
         -- Single AP detail — load all and find by mac
         local data = cli_json("aps --limit 500") or {}
-        if data.aps then
+        if data and data.aps then
             for _, ap in ipairs(data.aps) do
                 if ap.mac == mac then
                     result.mac          = ap.mac or ""
@@ -157,7 +157,7 @@ function api_aps()
         result.aps   = {}
         result.count = 0
         local data = cli_json("aps --limit 500") or {}
-        if data.aps then
+        if data and data.aps then
             for _, ap in ipairs(data.aps) do
                 result.count = result.count + 1
                 result.aps[#result.aps + 1] = {
