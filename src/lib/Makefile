@@ -53,12 +53,13 @@ else
   TARGET   =
 endif
 
-.PHONY: all clean ac_lib ap_lib acser apctl
+.PHONY: all clean ac_lib ap_lib acser apctl acctl-cli
 
-all: ac_lib ap_lib
+all: ac_lib ap_lib acctl-cli
 	@echo "Build complete."
-	@echo "  acser (AC server)  -> src/ac/"
-	@echo "  apctl (AP client)  -> src/ap/"
+	@echo "  acser (AC server)    -> src/lib/"
+	@echo "  apctl (AP client)    -> src/lib/"
+	@echo "  acctl-cli (CLI tool) -> src/lib/"
 
 ac_lib:
 	@$(MAKE) SERVER=1 CC="$(CC)" CFLAGS="$(CFLAGS) -DSERVER" \
@@ -73,11 +74,11 @@ acser: dllayer.o netlayer.o arg.o cfgarg.o cmdarg.o mjson.o \
         ../ac/main.o ../ac/process.o ../ac/net.o ../ac/message.o \
         ../ac/resource.o ../ac/db.o ../ac/aphash.o
 	@echo "  Linking acser..."
-	$(CC) $(CFLAGS) -o $@ $^ -lpthread -lm
+	$(CC) $(CFLAGS) -o $@ $^ -lpthread -lm -ljson-c
 
 acctl-cli: ../ac/cli.o ../ac/db.o
 	@echo "  Linking acctl-cli..."
-	$(CC) $(CFLAGS) -I$(INC_DIR) -o $@ $^ -lpthread -lm
+	$(CC) $(CFLAGS) -I$(INC_DIR) -o $@ $^ -lpthread -lm -ljson-c
 	@echo "  acser built successfully."
 
 apctl: dllayer.o netlayer.o arg.o cfgarg.o cmdarg.o mjson.o \
@@ -102,7 +103,7 @@ apctl: dllayer.o netlayer.o arg.o cfgarg.o cmdarg.o mjson.o \
 	$(CC) $(CFLAGS) -I$(INC_DIR) -c $< -o $@
 
 clean:
-	rm -f *.o ../ac/*.o ../ap/*.o acser apctl
+	rm -f *.o ../ac/*.o ../ap/*.o acser apctl acctl-cli
 	@echo "Clean complete."
 
 # Dependencies

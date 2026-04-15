@@ -58,7 +58,7 @@ static struct sysstat_t sysstat = {
 	.lock = PTHREAD_MUTEX_INITIALIZER,
 };
 
-/* MAC → random challenge map (for CHAP) */
+/* MAC 鈫?random challenge map (for CHAP) */
 #define LOCAL_AC_MAX  (16)
 struct mac_random_map_t {
 	uint32_t random;
@@ -168,7 +168,7 @@ static void *report_apstatus(void *arg)
 		if (connected) {
 			proto = MSG_PROTO_TCP;
 		} else {
-			/* Not connected — try reconnecting */
+			/* Not connected 鈥?try reconnecting */
 			SYSSTAT_LOCK();
 			ac_disconnect();
 			int new_sock = ac_connect();
@@ -228,7 +228,7 @@ static void proc_brd(struct msg_ac_brd_t *msg, int len)
 	SYSSTAT_UNLOCK();
 
 	if (!already_reg) {
-		/* Phase 1: Not registered — send registration request */
+		/* Phase 1: Not registered 鈥?send registration request */
 		char *resp_buf = malloc(sizeof(struct msg_ap_reg_t));
 		if (!resp_buf) {
 			sys_err("malloc for registration failed: %s\n",
@@ -331,7 +331,7 @@ static void proc_reg_resp(struct msg_ac_reg_resp_t *msg, int len)
 }
 
 /* ========================================================================
- * Command execution (AC → AP)
+ * Command execution (AC 鈫?AP)
  * ======================================================================== */
 
 static void proc_exec_cmd(struct msg_ac_cmd_t *cmd, int len)
@@ -364,7 +364,7 @@ static void proc_exec_cmd(struct msg_ac_cmd_t *cmd, int len)
  * Message routing
  * ======================================================================== */
 
-void msg_proc(void *data, int len, int proto)
+void ap_msg_proc(void *data, int len, int proto)
 {
 	struct msg_head_t *head = data;
 
@@ -424,7 +424,7 @@ void *__net_netrcv(void *arg)
 		return NULL;
 	}
 
-	msg_proc(buf, rcvlen, MSG_PROTO_TCP);
+	ap_msg_proc(buf, rcvlen, MSG_PROTO_TCP);
 	return NULL;
 }
 

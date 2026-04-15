@@ -42,31 +42,38 @@ static int __tcp_alive(struct nettcp_t *tcp)
 	int optval = 1;
 	int optlen = sizeof(optval);
 	if(setsockopt(tcp->sock, SOL_SOCKET, 
-			SO_KEEPALIVE, &optval, optlen) < -1) {
+			SO_KEEPALIVE, &optval, optlen) < 0) {
 		sys_err("Set tcp keepalive failed: %s\n",
 			strerror(errno));
 		return -1;
 	}
 
-	optval = 30;
+	/* TCP_KEEPCNT: max probe attempts before giving up.
+	 * Default was dangerously high (30). Set to 3 for faster
+	 * dead-connection detection. Total detection time:
+	 *   KEEPIDLE(60s) + KEEPCNT(3) * KEEPINTVL(10s) = 90s max */
+	optval = 3;
 	if(setsockopt(tcp->sock, SOL_TCP, 
-			TCP_KEEPCNT, &optval, optlen) < -1) {
+			TCP_KEEPCNT, &optval, optlen) < 0) {
 		sys_err("Set tcp_keepalive_probes failed: %s\n",
 			strerror(errno));
 		return -1;
 	}
 
-	optval = 30;
+	/* TCP_KEEPIDLE: time before first probe (seconds of inactivity).
+	 * 60s is reasonable — detects dead connections within 90s total. */
+	optval = 60;
 	if(setsockopt(tcp->sock, SOL_TCP, 
-			TCP_KEEPIDLE, &optval, optlen) < -1) {
+			TCP_KEEPIDLE, &optval, optlen) < 0) {
 		sys_err("Set tcp_keepalive_time failed: %s\n",
 			strerror(errno));
 		return -1;
 	}
 
-	optval = 5;
+	/* TCP_KEEPINTVL: interval between probes. */
+	optval = 10;
 	if(setsockopt(tcp->sock, SOL_TCP, 
-			TCP_KEEPINTVL, &optval, optlen) < -1) {
+			TCP_KEEPINTVL, &optval, optlen) < 0) {
 		sys_err("Set tcp_keepalive_intvl failed: %s\n",
 			strerror(errno));
 		return -1;

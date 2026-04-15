@@ -3,15 +3,15 @@
  *
  *       Filename:  link.h
  *
- *    Description:  
+ *    Description:  epoll-based I/O multiplexing and socket management.
+ *                  Protocol constants are defined in net.h only.
  *
- *        Version:  1.0
- *        Created:  2014年08月27日 09时43分55秒
- *       Revision:  none
+ *        Version:  2.0
+ *       Revision:  2026-04-15 — removed duplicate MSG_PROTO enum
  *       Compiler:  gcc
  *
  *         Author:  jianxi sun (jianxi), ycsunjane@gmail.com
- *   Organization:  
+ *   Organization:  OpenWrt AC Controller Project
  *
  * =====================================================================================
  */
@@ -22,10 +22,10 @@
 #include "dllayer.h"
 #include "netlayer.h"
 
-enum {
-	MSG_PROTO_ETH = 8000,
-	MSG_PROTO_TCP,
-};
+/*
+ * NOTE: MSG_PROTO_ETH and MSG_PROTO_TCP are defined in net.h.
+ * Do NOT redefine them here to avoid compilation conflicts.
+ */
 
 struct sockarr_t {
 	struct epoll_event ev;
@@ -38,7 +38,7 @@ struct sockarr_t {
 	struct sockarr_t *next;
 };
 
-void net_epoll_init();
+void net_epoll_init(void);
 
 int delete_sockarr(int sock);
 struct sockarr_t * insert_sockarr(int sock, void *(*func) (void *), void *arg);

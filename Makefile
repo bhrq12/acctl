@@ -4,15 +4,6 @@ PKG_NAME:=acctl
 PKG_VERSION:=2.0
 PKG_RELEASE:=1
 
-PKG_BUILD_DIR:=$(if $(KERNEL_BUILD_DIR),$(KERNEL_BUILD_DIR),$(TOPDIR)/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi)/$(PKG_NAME)
-
-PKG_CONFIG_DEPENDS:=
-
-# Build dependencies use SOURCE package names (not binary package names).
-# libpthread is built into musl on modern OpenWrt — not a separate package.
-PKG_BUILD_DEPENDS:=
-PKG_INSTALL_DEPENDS:=
-
 include $(INCLUDE_DIR)/package.mk
 
 define Package/acctl
@@ -20,7 +11,7 @@ define Package/acctl
   CATEGORY:=Network
   SUBMENU:=Access Points/Controllers
   TITLE:=OpenWrt AC Controller v2.0
-  DEPENDS:=+libuci-lua
+  DEPENDS:=+libuci-lua +libjson-c
   URL:=https://github.com/yourname/acctl
   MAINTAINER:=jianxi sun <ycsunjane@gmail.com>
 endef
@@ -67,7 +58,7 @@ define Build/Compile
 			-I$(STAGING_DIR)/usr/include \
 			-DDEBUG -Wall -Wextra" \
 		LDFLAGS="$(TARGET_LDFLAGS) -L$(STAGING_DIR)/usr/lib \
-			-lpthread -lm" \
+			-lpthread -lm -ljson-c" \
 		all
 endef
 

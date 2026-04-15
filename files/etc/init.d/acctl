@@ -136,12 +136,14 @@ status() {
 	fi
 
 	echo ""
-	echo "=== AP Online Count ==="
-	sqlite3 /etc/acctl/ac.db \
-		"SELECT COUNT(*) FROM node WHERE device_down=0" 2>/dev/null || echo "N/A"
-
-	echo ""
-	echo "=== Active Alarms ==="
-	sqlite3 /etc/acctl/ac.db \
-		"SELECT COUNT(*) FROM alarm_event WHERE acknowledged=0" 2>/dev/null || echo "N/A"
+	echo "=== Database ==="
+	if [ -f /etc/acctl/ac.json ]; then
+		echo "JSON database: /etc/acctl/ac.json ($(wc -c < /etc/acctl/ac.json) bytes)"
+		# Use acctl-cli for stats if available
+		if [ -x /usr/bin/acctl-cli ]; then
+			/usr/bin/acctl-cli stats 2>/dev/null || echo "Stats unavailable"
+		fi
+	else
+		echo "Database not found at /etc/acctl/ac.json"
+	fi
 }

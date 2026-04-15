@@ -32,7 +32,7 @@
 	pthread_mutex_lock(name)
 
 #define TRYLOCK(name) \
-	pthread_mutex_lock(name)
+	pthread_mutex_trylock(name)
 
 #define UNLOCK(name) \
 	pthread_mutex_unlock(name)

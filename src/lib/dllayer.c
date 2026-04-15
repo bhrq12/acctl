@@ -81,7 +81,8 @@ static void __init_nic(int sock, char *nic)
 	
 	int ret;
 	struct ifreq req;
-	strncpy(req.ifr_name, nic, IFNAMSIZ-1);
+	strncpy(req.ifr_name, nic, IFNAMSIZ - 1);
+	req.ifr_name[IFNAMSIZ - 1] = '\0';
 	ret = ioctl(sock, SIOCGIFINDEX, &req);
 	if(ret < 0) {
 		sys_err("Can not get ifiindex of %s: %s\n", 
@@ -97,7 +98,8 @@ static void __init_nic(int sock, char *nic)
 		exit(-1);
 	}
 
-	strncpy(dllnic.nic, nic, IFNAMSIZ-1);
+	strncpy(dllnic.nic, nic, IFNAMSIZ - 1);
+	dllnic.nic[IFNAMSIZ - 1] = '\0';
 	memcpy(dllnic.mac, req.ifr_hwaddr.sa_data, ETH_ALEN);
 }
 

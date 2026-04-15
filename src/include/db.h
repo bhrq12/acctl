@@ -17,8 +17,9 @@
 #ifndef __DB_H__
 #define __DB_H__
 
-#include <json-c/json.h>
 #include <stdint.h>
+#include <json-c/json.h>
+#include "log.h"
 
 #define DB_NULL       "(null)"
 #define DBNAME        "/etc/acctl/ac.json"

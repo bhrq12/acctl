@@ -23,6 +23,7 @@
  * This keeps old #include <sqlite3.h> code compiling without modification.
  */
 #include <stdint.h>
+#include "log.h"
 #include "db.h"
 
 /*

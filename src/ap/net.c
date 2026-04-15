@@ -53,7 +53,7 @@ static void *__net_dllrecv(void *arg)
 		/* Store AC's MAC from ETH header for TCP connection */
 		memcpy(sysstat.dmac, src_mac, ETH_ALEN);
 		/* Pass directly to message processor (single-threaded AP model) */
-		msg_proc(buf, rcvlen, MSG_PROTO_ETH);
+		ap_msg_proc(buf, rcvlen, MSG_PROTO_ETH);
 	}
 
 	free(buf);

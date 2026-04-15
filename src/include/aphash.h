@@ -22,6 +22,7 @@
 #include <pthread.h>
 #include <time.h>
 #include "list.h"
+#include "message.h"  /* for struct message_t */
 
 #define AP_HASH_SIZE  (256)
 #define MAC_FMT        "%02x:%02x:%02x:%02x:%02x:%02x"

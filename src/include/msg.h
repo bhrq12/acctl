@@ -19,11 +19,15 @@
 
 #include <stdint.h>
 #include <string.h>
+#include <time.h>
 #include <netinet/in.h>
 #include <linux/if_ether.h>
 
 #include "chap.h"
 #include "arg.h"
+
+/* External reference to global argument struct (defined in arg.c) */
+extern struct arg_t argument;
 
 #define UUID_LEN  (50)
 

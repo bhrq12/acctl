@@ -451,6 +451,7 @@ static void *ap_heartbeat_check(void *arg)
  * AC identity initialization
  * ======================================================================== */
 
+/* AC identity — declared in process.h */
 struct ac_t ac;
 
 void ac_init(void)
