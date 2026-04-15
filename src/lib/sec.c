@@ -32,6 +32,7 @@
 #include "sec.h"
 #include "sha256.h"
 #include "log.h"
+#include "aphash.h"
 
 /* ========================================================================
  * 1. Command whitelist validation (prevents command injection)
