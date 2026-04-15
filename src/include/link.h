@@ -21,6 +21,7 @@
 #include <stdint.h>
 #include "dllayer.h"
 #include "netlayer.h"
+#include "net.h"
 
 /*
  * NOTE: MSG_PROTO_ETH and MSG_PROTO_TCP are defined in net.h.
