@@ -27,6 +27,7 @@
 #include <arpa/inet.h>
 #include <linux/if_ether.h>
 #include <time.h>
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 
@@ -527,8 +528,7 @@ void ap_lost(int sock)
 	/* Find AP by socket and snapshot its MAC */
 	for (int i = 0; i < AP_HASH_SIZE; i++) {
 		struct ap_hash_t *aphash;
-		hlist_for_each_entry(aphash, &g_ap_table.buckets[i],
-			aphash->node) {
+		hlist_for_each_entry(aphash, n, &g_ap_table.buckets[i], node) {
 			if (aphash->ap.sock == sock) {
 				/* Copy MAC before releasing lock */
 				memcpy(mac_copy, aphash->ap.mac, ETH_ALEN);
@@ -574,7 +574,7 @@ int is_mine(struct msg_head_t *msg, int len)
 }
 
 void msg_proc(struct ap_hash_t *aphash,
-	struct msg_head_t *msg, int len, int proto)
+	void *data, int len, int proto)
 {
 	if (!is_mine(msg, len))
 		return;
