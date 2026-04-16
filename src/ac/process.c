@@ -403,6 +403,7 @@ static void *ap_heartbeat_check(void *arg)
 		for (int i = 0; i < AP_HASH_SIZE; i++) {
 			pthread_mutex_lock(&g_ap_table.lock);
 
+			struct ap_hash_t *aphash;
 			struct hlist_node *n, *tmp;
 			hlist_for_each_entry_safe(aphash, n, tmp,
 				&g_ap_table.buckets[i], node) {
