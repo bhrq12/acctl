@@ -197,9 +197,11 @@ function api_aps_action()
     end
 
     -- Audit log
+    -- Shell-safe: escape single quotes in macs
+    local safe_macs = macs:gsub("'", "'\\''")
     cli_output(string.format(
         "acctl-cli audit admin %s ap_batch '%s' '' '' ''",
-        action, macs:sub(1, 50)))
+        action, safe_macs:sub(1, 50)))
 
     if action == "reboot" then
         result.message = "Reboot command queued for APs"
@@ -357,13 +359,30 @@ function api_cmd()
         ["cat /tmp/ap_status"]  = true,
     }
 
-    local found = false
-    for pattern, _ in pairs(allowed) do
-        if cmd:find(pattern, 1, true) == 1 then
-            found = true
-            break
-        end
+    -- Exact match: command must exactly equal whitelist entry
+    -- Reject if cmd contains shell metacharacters
+    local shell_metachar = "[;&|`$(){}<>]"
+    if cmd:match(shell_metachar) then
+        result.code    = 403
+        result.message = "Command contains forbidden characters"
+        http.prepare_content("application/json")
+        http.write_json(result)
+        return
     end
+
+    -- Exact whitelist match
+    local allowed = {
+        ["reboot"]             = true,
+        ["uptime"]             = true,
+        ["ifconfig"]           = true,
+        ["iwconfig"]           = true,
+        ["wifi"]               = true,
+        ["cat /proc/uptime"]   = true,
+        ["cat /proc/loadavg"]  = true,
+        ["cat /tmp/ap_status"] = true,
+    }
+
+    local found = allowed[cmd] == true
 
     if not found then
         result.code    = 403

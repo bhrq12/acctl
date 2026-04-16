@@ -848,7 +848,7 @@ int db_alarm_insert(int level, const char *ap_mac, const char *message,
     json_object_put(json_object_object_get(al, "id"));
     json_object_object_add(al, "id", json_object_new_int(max_id + 1));
 
-    json_object_array_add(al, al);
+    json_object_array_add(alarms, al);
     db->modified = 1;
     return 0;
 }

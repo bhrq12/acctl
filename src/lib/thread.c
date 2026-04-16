@@ -17,6 +17,7 @@
  */
 #include <stdio.h>
 #include <stdint.h>
+#include <pthread.h>
 
 #include "thread.h"
 #include "log.h"

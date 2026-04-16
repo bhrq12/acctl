@@ -28,6 +28,7 @@
 #include <linux/if_ether.h>
 #include <time.h>
 #include <unistd.h>
+#include <pthread.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 
