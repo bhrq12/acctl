@@ -6,7 +6,7 @@
  */
 #include "sha256.h"
 #include <string.h>
-#include "stdint.h"
+#include <stdint.h>
 
 /* SHA-256 round constants */
 static const uint32_t K[64] = {

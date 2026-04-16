@@ -3,12 +3,12 @@
  *
  *       Filename:  arg.c
  *
- *    Description:  Configuration argument processing â€” UCI + command line.
+ *    Description:  Configuration argument processing â€?UCI + command line.
  *                  Handles interface MAC/IP detection and argument validation.
  *
  *        Version:  2.0
- *       Created:  2014å¹´08æœˆ19æ—¥
- *       Revision:  2026-04-15 â€” fixed strncpy, added __getaddr
+ *       Created:  2014å¹?8æœ?9æ—?
+ *       Revision:  2026-04-15 â€?fixed strncpy, added __getaddr
  *       Compiler:  gcc
  *
  *         Author:  jianxi sun (jianxi), ycsunjane@gmail.com
@@ -27,15 +27,15 @@
 
 #include "arg.h"
 #include "log.h"
-#include "sys/socket.h"
-#include "arpa/inet.h"
+#include <sys/socket.h>
+#include <arpa/inet.h>
 
 struct arg_t argument = {0};
 int debug = 0;
 int daemon_mode = 0;
 
 /*
- * __getmac â€” get MAC address of the specified network interface
+ * __getmac â€?get MAC address of the specified network interface
  */
 static void __getmac(char *nic, char *mac)
 {
@@ -62,7 +62,7 @@ static void __getmac(char *nic, char *mac)
 }
 
 /*
- * __getaddr â€” get IPv4 address of the specified network interface
+ * __getaddr â€?get IPv4 address of the specified network interface
  */
 static void __getaddr(char *nic, struct sockaddr_in *addr)
 {
@@ -89,7 +89,7 @@ static void __getaddr(char *nic, struct sockaddr_in *addr)
 }
 
 /*
- * __check_arg â€” validate configuration and populate missing fields
+ * __check_arg â€?validate configuration and populate missing fields
  */
 static void __check_arg(void)
 {

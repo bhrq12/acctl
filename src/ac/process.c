@@ -44,7 +44,7 @@
 #include "resource.h"
 #include "sec.h"
 #include "dllayer.h"
-#include "sys/socket.h"
+#include <sys/socket.h>
 
 volatile int ap_reg_cnt = 0;  /* registration counter for stats */
 
@@ -60,7 +60,7 @@ static int __uuid_equ(const char *src, const char *dest)
 }
 
 /*
- * __get_cmd_output â€” read stdout of a command into a buffer
+ * __get_cmd_output â€?read stdout of a command into a buffer
  *   Returns number of bytes read, or -1 on error.
  */
 static int __get_cmd_output(const char *cmd, char *buf, size_t buflen)
@@ -86,14 +86,14 @@ static int __get_cmd_output(const char *cmd, char *buf, size_t buflen)
 }
 
 /*
- * __exec_command_safe â€” execute AC command on AP with full security
+ * __exec_command_safe â€?execute AC command on AP with full security
  *
  * Security layers (all must pass):
  *   1. Rate limiting (per MAC)
  *   2. Command whitelist validation
  *   3. Timeout protection (SIGALRM after 30s)
  *
- * The command runs on the AP side (apctl process) â€” this function
+ * The command runs on the AP side (apctl process) â€?this function
  * constructs the command packet for the AP to execute.
  *
  * Returns:  0 on success (command packet sent)
@@ -120,7 +120,7 @@ static int __exec_command_safe(struct ap_t *ap, const char *cmd)
 		return -1;
 	}
 
-	/* Command is safe â€” send to AP via TCP */
+	/* Command is safe â€?send to AP via TCP */
 	sys_debug("Command approved for AP "
 		MAC_FMT": %s\n",
 		ap->mac[0], ap->mac[1], ap->mac[2],
@@ -135,7 +135,7 @@ static int __exec_command_safe(struct ap_t *ap, const char *cmd)
  * ======================================================================== */
 
 /*
- * __ap_status â€” handle AP status report message
+ * __ap_status â€?handle AP status report message
  *
  * Extracts system information from AP status payload and updates DB.
  * If AP requests a command result (from previous exec), captures it.
@@ -215,7 +215,7 @@ static void __ap_status(struct ap_t *ap, struct msg_ap_status_t *msg, int len)
  * ======================================================================== */
 
 /*
- * __ap_reg â€” handle AP registration request
+ * __ap_reg â€?handle AP registration request
  *
  * Protocol:
  *   AP sends: md5(packet_without_chap + random0_from_AC + password)
@@ -264,7 +264,7 @@ static void __ap_reg(struct ap_hash_t *aphash,
 		return;
 	}
 
-	/* 3. Replay protection â€” random must be recent and unique */
+	/* 3. Replay protection â€?random must be recent and unique */
 	int replay_ret = sec_check_replay(ac.random, time(NULL));
 	if (replay_ret != 0) {
 		sys_err("Replay attack detected for %s\n", mac_str);
@@ -278,7 +278,7 @@ static void __ap_reg(struct ap_hash_t *aphash,
 			other_ac_uuid, sizeof(other_ac_uuid)) == 0 &&
 		other_ac_uuid[0] != '\0' &&
 		!__uuid_equ(other_ac_uuid, ac.acuuid)) {
-		/* AP was registered to another AC â€” this may be a takeover attempt.
+		/* AP was registered to another AC â€?this may be a takeover attempt.
 		 * Verify AC trust before allowing re-registration. */
 		sys_warn("AP %s attempting re-registration from different AC\n",
 			mac_str);
@@ -300,10 +300,10 @@ static void __ap_reg(struct ap_hash_t *aphash,
 	/* Check if requested IP conflicts with existing allocation */
 	if (msg->ipv4.sin_addr.s_addr != 0) {
 		if (res_ip_conflict(&msg->ipv4, msg->header.mac) == 0) {
-			/* No conflict â€” AP's requested IP is fine */
+			/* No conflict â€?AP's requested IP is fine */
 			alloc_addr = &msg->ipv4;
 		} else {
-			/* Conflict â€” try to allocate from pool */
+			/* Conflict â€?try to allocate from pool */
 			sys_warn("IP conflict for %s, allocating from pool\n",
 				mac_str);
 		}
@@ -456,7 +456,7 @@ static void *ap_heartbeat_check(void *arg)
  * AC identity initialization
  * ======================================================================== */
 
-/* AC identity â€” declared in process.h */
+/* AC identity â€?declared in process.h */
 struct ac_t ac;
 
 void ac_init(void)
@@ -566,7 +566,7 @@ int is_mine(struct msg_head_t *msg, int len)
 		return 0;
 	}
 
-	/* MSG_AP_RESP means AP is registered to another AC â€” filter it out */
+	/* MSG_AP_RESP means AP is registered to another AC â€?filter it out */
 	if (msg->msg_type == MSG_AP_RESP &&
 		!__uuid_equ(msg->acuuid, ac.acuuid)) {
 		sys_debug("MSG_AP_RESP from other AC (%.36s)\n",
@@ -600,7 +600,7 @@ void msg_proc(struct ap_hash_t *aphash,
 		break;
 
 	case MSG_AP_RESP:
-		/* AP is already registered to another AC â€” informational */
+		/* AP is already registered to another AC â€?informational */
 		sys_debug("AP already registered to AC: %.36s\n",
 			msg->acuuid);
 		break;

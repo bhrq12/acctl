@@ -3,7 +3,7 @@
  *
  *       Filename:  net.c
  *
- *    Description:  AC network layer â€” datalink broadcast + TCP listener.
+ *    Description:  AC network layer â€?datalink broadcast + TCP listener.
  *                  - Datalink layer: sends AC broadcast probe packets
  *                  - TCP listener: accepts AP connections
  *                  - Uses epoll for async I/O multiplexing
@@ -38,12 +38,12 @@
 #include "process.h"
 #include "link.h"
 #include "chap.h"
-#include "sys/socket.h"
-#include "arpa/inet.h"
-#include "pthread.h"
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <pthread.h>
 
 /* ========================================================================
- * Datalink layer receive â€” handle ETH broadcast packets
+ * Datalink layer receive â€?handle ETH broadcast packets
  * ======================================================================== */
 
 static void *__net_dllrecv(void *arg)
@@ -71,7 +71,7 @@ static void *__net_dllrecv(void *arg)
 	/* Use Ethernet-layer source MAC for routing (not msg header MAC) */
 	struct ap_hash_t *aphash = hash_ap((const unsigned char *)src_mac);
 	if (!aphash) {
-		/* Unknown AP â€” create new entry */
+		/* Unknown AP â€?create new entry */
 		aphash = hash_ap_add((const unsigned char *)src_mac);
 		if (!aphash) {
 			free(msg);
@@ -92,7 +92,7 @@ static void *__net_dllrecv(void *arg)
 }
 
 /* ========================================================================
- * TCP receive â€” handle TCP stream from AP
+ * TCP receive â€?handle TCP stream from AP
  * ======================================================================== */
 
 void *__net_netrcv(void *arg)
@@ -164,7 +164,7 @@ void *__net_netrcv(void *arg)
 }
 
 /* ========================================================================
- * AC broadcast probe thread â€” periodically announce AC presence
+ * AC broadcast probe thread â€?periodically announce AC presence
  * ======================================================================== */
 
 static void *net_dllbrd(void *arg)
@@ -199,12 +199,12 @@ static void *net_dllbrd(void *arg)
 		sleep(argument.brditv);
 	}
 
-	/* Never reached â€” thread runs forever */
+	/* Never reached â€?thread runs forever */
 	return NULL;
 }
 
 /* ========================================================================
- * TCP listener thread â€” accept incoming AP connections
+ * TCP listener thread â€?accept incoming AP connections
  * ======================================================================== */
 
 static void *net_netlisten(void *arg)

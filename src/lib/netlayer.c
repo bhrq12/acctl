@@ -35,7 +35,7 @@
 #include "netlayer.h"
 #include "msg.h"
 #include "apstatus.h"
-#include "net/if.h"
+#include <net/if.h>
 
 static int __tcp_alive(struct nettcp_t *tcp)
 {

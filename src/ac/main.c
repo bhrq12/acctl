@@ -44,7 +44,7 @@
 #include "sql.h"
 #include "sec.h"
 #include "log.h"
-#include "sys/resource.h"
+#include <sys/resource.h>
 
 volatile int g_running = 1;  /* global shutdown flag */
 

@@ -30,7 +30,7 @@
 #include "chap.h"
 #include "msg.h"
 #include "log.h"
-#include "sys/types.h"
+#include <sys/types.h>
 
 #define MAX_PASSWORD_LEN  128
 

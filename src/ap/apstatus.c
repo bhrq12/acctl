@@ -23,8 +23,8 @@
 
 #include "apstatus.h"
 #include "log.h"
-#include "sys/wait.h"
-#include "fcntl.h"
+#include <sys/wait.h>
+#include <fcntl.h>
 
 static struct apstatus_t cached_status;
 static time_t cache_time = 0;

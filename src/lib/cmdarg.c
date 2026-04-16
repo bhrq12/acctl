@@ -25,7 +25,7 @@
 
 #include "arg.h"
 #include "log.h"
-#include "unistd.h"
+#include <unistd.h>
 
 #define has_arg (1)
 static struct option long_arg[] = {

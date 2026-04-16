@@ -6,7 +6,7 @@
  *    Description:  
  *
  *        Version:  1.0
- *        Created:  2014年09月02日 14时27分53秒
+ *        Created:  2014�?9�?2�?14�?7�?3�?
  *       Revision:  none
  *       Compiler:  gcc
  *
@@ -29,10 +29,10 @@
 
 #include "log.h"
 #include "link.h"
-#include "sys/socket.h"
-#include "netinet/in.h"
-#include "linux/if_ether.h"
-#include "net/if.h"
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <linux/if_ether.h>
+#include <net/if.h>
 
 static pthread_mutex_t sockarr_lock = PTHREAD_MUTEX_INITIALIZER;
 static struct sockarr_t *__head = NULL;

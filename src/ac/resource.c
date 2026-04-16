@@ -27,7 +27,7 @@
 #include "sql.h"
 #include "arg.h"
 #include "mjson.h"
-#include "pthread.h"
+#include <pthread.h>
 #include "list.h"
 
 struct _ippool_t *ippool = NULL;
@@ -84,7 +84,7 @@ struct _ip_t *res_ip_alloc(struct sockaddr_in *addr, char *mac)
 				return new_ip;
 			}
 		}
-		/* Requested IP not in pool â€” fall through to auto-allocate */
+		/* Requested IP not in pool â€?fall through to auto-allocate */
 	}
 
 	/* Auto-allocate from available pool (FIFO) */
