@@ -57,7 +57,7 @@ void hash_init(void)
  * hash_ap — find AP entry by MAC address
  *   Returns: ap_hash_t* or NULL if not found
  */
-struct ap_hash_t *hash_ap(char *mac)
+struct ap_hash_t *hash_ap(const unsigned char *mac)
 {
 	if (!mac)
 		return NULL;

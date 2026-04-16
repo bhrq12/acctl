@@ -70,8 +70,8 @@ struct ap_hash_table {
 extern struct ap_hash_table g_ap_table;
 
 void  hash_init(void);
-struct ap_hash_t *hash_ap(char *mac);
-struct ap_hash_t *hash_ap_add(char *mac);
+struct ap_hash_t *hash_ap(const unsigned char *mac);
+struct ap_hash_t *hash_ap_add(const unsigned char *mac);
 void  hash_ap_del(char *mac);
 void  hash_ap_update_sock(char *mac, int sock);
 void  hash_ap_set_offline(char *mac);

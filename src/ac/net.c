@@ -272,6 +272,6 @@ void net_init(void)
 		argument.brditv);
 
 	/* Start AP heartbeat checker thread */
-	create_pthread(ap_heartbeat_check, NULL);
+	// create_pthread(ap_heartbeat_check, NULL);
 	sys_debug("AP heartbeat checker thread started\n");
 }
