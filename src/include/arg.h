@@ -35,7 +35,7 @@ struct arg_t {
 #endif
 	int 	msgitv;
 	char 	nic[IFNAMSIZ];
-	char 	mac[ETH_ALEN];
+	unsigned char mac[ETH_ALEN];
 	struct  sockaddr_in addr;
 };
 

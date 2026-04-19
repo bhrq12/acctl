@@ -44,7 +44,7 @@
 /* AP global state */
 struct sysstat_t {
 	char     acuuid[UUID_LEN];
-	char     dmac[ETH_ALEN];   /* AC's MAC address */
+	unsigned char dmac[ETH_ALEN];   /* AC's MAC address */
 	int      isreg;             /* 0=unregistered, 1=registered */
 	int      sock;              /* TCP socket to AC */
 	struct sockaddr_in server;  /* AC's IP address */

@@ -37,7 +37,7 @@
 
 /* AP runtime state */
 struct ap_t {
-	char mac[ETH_ALEN];
+	unsigned char mac[ETH_ALEN];
 	char uuid[50];
 	char hostname[64];
 	int  sock;                   /* TCP socket fd, -1 if offline */

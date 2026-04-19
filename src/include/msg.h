@@ -71,7 +71,7 @@ struct msg_head_t {
 	uint32_t random;         /* challenge/response random number */
 	uint8_t  chap[CHAP_LEN];/* CHAP MD5 digest (16 bytes) */
 	char     acuuid[UUID_LEN]; /* AC unique identifier */
-	char     mac[ETH_ALEN];  /* AP MAC address */
+	unsigned char mac[ETH_ALEN];  /* AP MAC address */
 	int      msg_type;       /* message type */
 } __attribute__((packed));
 

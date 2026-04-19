@@ -53,7 +53,7 @@ void message_travel_init(void);
 
 struct sysstat_t {
 	char     acuuid[UUID_LEN];
-	char     dmac[ETH_ALEN];
+	unsigned char dmac[ETH_ALEN];
 	int      isreg;
 	int      sock;
 	struct sockaddr_in server;

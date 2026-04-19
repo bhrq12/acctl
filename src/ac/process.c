@@ -581,10 +581,7 @@ void ap_lost(int sock)
 
 	if (found) {
 		snprintf(mac_str, sizeof(mac_str),
-			MAC_FMT,
-			mac_copy[0], mac_copy[1],
-			mac_copy[2], mac_copy[3],
-			mac_copy[4], mac_copy[5]);
+			MAC_FMT", MAC_ARG(mac_copy));
 		sys_debug("AP lost (sock=%d): %s\n", sock, mac_str);
 		db_ap_set_offline(mac_str);
 	}
