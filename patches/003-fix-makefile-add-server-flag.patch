@@ -1,0 +1,26 @@
+--- a/src/Makefile
++++ b/src/Makefile
+@@ -33,8 +33,13 @@ LDFLAGS  ?= -lpthread -lm
+ 
+ # Targets
+ SERVER ?= 1
+-CLIENT ?= 1
+-CLI    ?= 1
++CLIENT  ?= 1
++CLI     ?= 1
++
++# Force SERVER flag for OpenWrt build (required for ac_t definitions)
++ifdef SERVER
++CFLAGS += -DSERVER
++endif
+ 
+ .PHONY: all clean acser apctl acctl-cli libac.a
+ 
+@@ -43,7 +48,7 @@ LIB_SRCS   = lib/chap.c lib/md5.c lib/link.c lib/thread.c lib/sec.c lib/sha256.
+ LIB_SRCS  += lib/dllayer.c lib/netlayer.c lib/arg.c lib/cfgarg.c lib/cmdarg.c lib/mjson.c
+ LIB_OBJS   = $(LIB_SRCS:.c=.o)
+ 
+-# Generic .c -> .o (no SERVER/CLIENT flag)
++# Generic .c -> .o (SERVER/CLIENT flags now set globally above)
+ $(LIB_OBJS): lib/%.o: lib/%.c
+ 	$(CC) $(CFLAGS) -I$(INC_DIR) -c $< -o $@

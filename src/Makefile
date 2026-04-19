@@ -29,6 +29,11 @@ SERVER ?= 1
 CLIENT ?= 1
 CLI    ?= 1
 
+# Default: Enable SERVER for OpenWrt builds (required for ac_t definitions)
+ifeq ($(SERVER),1)
+  CFLAGS += -DSERVER
+endif
+
 .PHONY: all clean acser apctl acctl-cli libac.a
 
 all: $(if $(SERVER),acser) $(if $(CLIENT),apctl) $(if $(CLI),acctl-cli)

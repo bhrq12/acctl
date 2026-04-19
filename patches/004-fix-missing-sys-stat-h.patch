@@ -1,0 +1,17 @@
+--- a/src/ac/main.c
++++ b/src/ac/main.c
+@@ -20,6 +20,7 @@
+  *         Author:  jianxi sun (jianxi), ycsunjane@gmail.com
+  *   Organization:  OpenWrt AC Controller Project
+  *
+  * ============================================================================
+  */
+ #include <stdio.h>
+ #include <stdint.h>
+@@ -31,6 +32,7 @@
+ #include <fcntl.h>
+ #include <string.h>
+ #include <errno.h>
++#include <sys/stat.h>
+ 
+ #include "arg.h"

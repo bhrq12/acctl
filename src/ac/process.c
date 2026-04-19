@@ -44,6 +44,7 @@
 #include "resource.h"
 #include "sec.h"
 #include "dllayer.h"
+#include "sql.h"
 #include <sys/socket.h>
 
 volatile int ap_reg_cnt = 0;  /* registration counter for stats */
