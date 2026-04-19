@@ -3,7 +3,7 @@
  *
  *       Filename:  net.c
  *
- *    Description:  AC network layer â€?datalink broadcast + TCP listener.
+ *    Description:  AC network layer ï¿½?datalink broadcast + TCP listener.
  *                  - Datalink layer: sends AC broadcast probe packets
  *                  - TCP listener: accepts AP connections
  *                  - Uses epoll for async I/O multiplexing
@@ -38,12 +38,13 @@
 #include "process.h"
 #include "link.h"
 #include "chap.h"
+#include "netlayer.h"
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <pthread.h>
 
 /* ========================================================================
- * Datalink layer receive â€?handle ETH broadcast packets
+ * Datalink layer receive ï¿½?handle ETH broadcast packets
  * ======================================================================== */
 
 static void *__net_dllrecv(void *arg)
@@ -51,10 +52,17 @@ static void *__net_dllrecv(void *arg)
 	(void)arg;
 	struct message_t *msg;
 
-	msg = malloc(sizeof(*msg) + DLL_PKT_DATALEN);
+	msg = malloc(sizeof(*msg));
 	if (!msg) {
 		sys_err("malloc for datalink message failed: %s\n",
 			strerror(errno));
+		return NULL;
+	}
+	msg->data = malloc(DLL_PKT_DATALEN);
+	if (!msg->data) {
+		sys_err("malloc for datalink msg data failed: %s\n",
+			strerror(errno));
+		free(msg);
 		return NULL;
 	}
 
@@ -62,7 +70,8 @@ static void *__net_dllrecv(void *arg)
 	int rcvlen = dll_rcv(msg->data, DLL_PKT_DATALEN, src_mac);
 	(void)src_mac;  /* used for routing, suppress unused warning */
 	if (rcvlen < (int)sizeof(struct ethhdr)) {
-		free(msg);  /* FIX: was leaking msg on short read */
+		free(msg->data);
+		free(msg);
 		return NULL;
 	}
 
@@ -71,9 +80,10 @@ static void *__net_dllrecv(void *arg)
 	/* Use Ethernet-layer source MAC for routing (not msg header MAC) */
 	struct ap_hash_t *aphash = hash_ap((const unsigned char *)src_mac);
 	if (!aphash) {
-		/* Unknown AP â€?create new entry */
+		/* Unknown AP ï¿½?create new entry */
 		aphash = hash_ap_add((const unsigned char *)src_mac);
 		if (!aphash) {
+			free(msg->data);
 			free(msg);
 			return NULL;
 		}
@@ -92,7 +102,7 @@ static void *__net_dllrecv(void *arg)
 }
 
 /* ========================================================================
- * TCP receive â€?handle TCP stream from AP
+ * TCP receive ï¿½?handle TCP stream from AP
  * ======================================================================== */
 
 void *__net_netrcv(void *arg)
@@ -117,10 +127,17 @@ void *__net_netrcv(void *arg)
 		return NULL;
 	}
 
-	struct message_t *msg = malloc(sizeof(*msg) + NET_PKT_DATALEN);
+	struct message_t *msg = malloc(sizeof(*msg));
 	if (!msg) {
 		sys_warn("malloc for TCP message failed: %s\n",
 			strerror(errno));
+		return NULL;
+	}
+	msg->data = malloc(NET_PKT_DATALEN);
+	if (!msg->data) {
+		sys_warn("malloc for TCP msg data failed: %s\n",
+			strerror(errno));
+		free(msg);
 		return NULL;
 	}
 
@@ -164,7 +181,7 @@ void *__net_netrcv(void *arg)
 }
 
 /* ========================================================================
- * AC broadcast probe thread â€?periodically announce AC presence
+ * AC broadcast probe thread ï¿½?periodically announce AC presence
  * ======================================================================== */
 
 static void *net_dllbrd(void *arg)
@@ -199,12 +216,12 @@ static void *net_dllbrd(void *arg)
 		sleep(argument.brditv);
 	}
 
-	/* Never reached â€?thread runs forever */
+	/* Never reached ï¿½?thread runs forever */
 	return NULL;
 }
 
 /* ========================================================================
- * TCP listener thread â€?accept incoming AP connections
+ * TCP listener thread ï¿½?accept incoming AP connections
  * ======================================================================== */
 
 static void *net_netlisten(void *arg)
@@ -273,5 +290,5 @@ void net_init(void)
 
 	/* Start AP heartbeat checker thread */
 	// create_pthread(ap_heartbeat_check, NULL);
-	sys_debug("AP heartbeat checker thread started\n");
+	// sys_debug("AP heartbeat checker thread started\n");
 }

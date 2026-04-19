@@ -52,7 +52,7 @@ struct sysstat_t {
 	time_t   last_brd;          /* timestamp of last broadcast received */
 };
 
-static struct sysstat_t sysstat = {
+struct sysstat_t sysstat = {
 	.acuuid = {0},
 	.dmac = {0},
 	.isreg = 0,
@@ -61,7 +61,7 @@ static struct sysstat_t sysstat = {
 	.lock = PTHREAD_MUTEX_INITIALIZER,
 };
 
-/* MAC éˆ?random challenge map (for CHAP) */
+/* MAC ï¿½?random challenge map (for CHAP) */
 #define LOCAL_AC_MAX  (16)
 struct mac_random_map_t {
 	uint32_t random;
@@ -176,7 +176,7 @@ static void *report_apstatus(void *arg)
 		if (connected) {
 			proto = MSG_PROTO_TCP;
 		} else {
-			/* Not connected éˆ?try reconnecting */
+			/* Not connected ï¿½?try reconnecting */
 			SYSSTAT_LOCK();
 			ac_disconnect();
 			int new_sock = ac_connect();
@@ -236,7 +236,7 @@ static void proc_brd(struct msg_ac_brd_t *msg, int len)
 	SYSSTAT_UNLOCK();
 
 	if (!already_reg) {
-		/* Phase 1: Not registered éˆ?send registration request */
+		/* Phase 1: Not registered ï¿½?send registration request */
 		char *resp_buf = malloc(sizeof(struct msg_ap_reg_t));
 		if (!resp_buf) {
 			sys_err("malloc for registration failed: %s\n",
@@ -339,7 +339,7 @@ static void proc_reg_resp(struct msg_ac_reg_resp_t *msg, int len)
 }
 
 /* ========================================================================
- * Command execution (AC éˆ?AP)
+ * Command execution (AC ï¿½?AP)
  * ======================================================================== */
 
 static void proc_exec_cmd(struct msg_ac_cmd_t *cmd, int len)

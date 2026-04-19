@@ -48,7 +48,7 @@ endef
 define Build/Compile
 	+$(MAKE) -C $(PKG_BUILD_DIR)/src \
 		CC="$(TARGET_CC)" \
-		CFLAGS="$(TARGET_CFLAGS) -I$(PKG_BUILD_DIR)/src/include -Wall -Wextra" \
+		CFLAGS="$(TARGET_CFLAGS) -I$(PKG_BUILD_DIR)/src/include -Wall -Wextra -DSERVER" \
 		LDFLAGS="$(TARGET_LDFLAGS) -lpthread -lm -ljson-c" \
 		all
 endef

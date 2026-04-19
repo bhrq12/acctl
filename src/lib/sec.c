@@ -147,20 +147,13 @@ int sec_validate_command(const char *cmd)
 		return -3;
 	}
 
-	/* Check for dangerous character patterns */
-	for (i = 0; dangerous_patterns[i]; i++) {
-		if (strstr(cmd, dangerous_patterns[i])) {
-			sys_warn("Command blocked: contains dangerous pattern '%s'\n",
-				dangerous_patterns[i]);
-			return -1;
-		}
-	}
-
-	/* Check against whitelist */
+	/* Check against whitelist FIRST — whitelisted commands bypass
+	 * dangerous pattern check (e.g. "cat /proc/uptime" contains "/proc/"
+	 * but is explicitly allowed) */
 	for (i = 0; cmd_whitelist[i].prefix; i++) {
 		if (strncmp(cmd, cmd_whitelist[i].prefix,
 			    cmd_whitelist[i].prefix_len) == 0) {
-			/* Found in whitelist â€?verify argument count */
+			/* Verify argument count */
 			const char *args = cmd + cmd_whitelist[i].prefix_len;
 			while (*args == ' ') args++;
 			int argc = (*args == '\0') ? 0 : 1;
@@ -183,18 +176,27 @@ int sec_validate_command(const char *cmd)
 		}
 	}
 
+	/* Not in whitelist — check for dangerous character patterns */
+	for (i = 0; dangerous_patterns[i]; i++) {
+		if (strstr(cmd, dangerous_patterns[i])) {
+			sys_warn("Command blocked: contains dangerous pattern '%s'\n",
+				dangerous_patterns[i]);
+			return -1;
+		}
+	}
+
 	sys_warn("Command not in whitelist: %.60s\n", cmd);
 	return -2;
 }
 
 /*
- * sec_exec_command â€?safe command execution
+ * sec_exec_command — safe command execution (single invocation)
  *
- * Executes a pre-validated command and captures output.
- * Never uses popen with unchecked input.
- * Uses SIGCHLD-based timeout via fork() â€?safe for multi-threaded programs.
+ * Executes a pre-validated command and captures output via pipe.
+ * Uses fork + exec (no popen) — the command runs exactly ONCE.
+ * SIGALRM provides a 30-second hard timeout.
  *
- * Returns:  0 on success, -1 on error
+ * Returns:  0 on success, -1 on error, >0 on non-zero exit
  */
 int sec_exec_command(const char *cmd, char *output, size_t output_len)
 {
@@ -204,39 +206,60 @@ int sec_exec_command(const char *cmd, char *output, size_t output_len)
 		return -1;
 	}
 
-	/* Fork + SIGCHLD timeout â€?safe in multi-threaded environment */
+	int pipefd[2];
+	if (pipe(pipefd) < 0) {
+		sys_err("pipe() failed: %s\n", strerror(errno));
+		return -1;
+	}
+
 	pid_t pid = fork();
 	if (pid < 0) {
+		close(pipefd[0]);
+		close(pipefd[1]);
 		sys_err("fork failed for '%s': %s\n", cmd, strerror(errno));
 		return -1;
 	}
 
 	if (pid == 0) {
-		/* Child: execute command */
+		/* Child: redirect stdout/stderr to pipe, execute command */
+		close(pipefd[0]);
+		dup2(pipefd[1], STDOUT_FILENO);
+		dup2(pipefd[1], STDERR_FILENO);
+		close(pipefd[1]);
 		execlp("sh", "sh", "-c", cmd, (char *)NULL);
-		_exit(127);  /* only reached if execlp fails */
+		_exit(127);
 	}
 
-	/* Parent: wait with timeout using SIGALRM */
-	sigset_t mask, omask;
-	sigemptyset(&mask);
-	sigaddset(&mask, SIGCHLD);
-	sigprocmask(SIG_BLOCK, &mask, &omask);
+	/* Parent: read output from pipe with timeout */
+	close(pipefd[1]);
 
-	struct sigaction sa;
+	struct sigaction sa, old_sa;
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = SIG_DFL;
 	sigemptyset(&sa.sa_mask);
-	sa.sa_flags = 0;
-	sigaction(SIGALRM, &sa, NULL);
+	sigaction(SIGALRM, &sa, &old_sa);
+	alarm(30);
 
-	alarm(30);  /* 30-second hard timeout */
+	size_t total = 0;
+	if (output && output_len > 0) {
+		ssize_t n;
+		while (total < output_len - 1 &&
+		       (n = read(pipefd[0], output + total,
+				 output_len - 1 - total)) > 0) {
+			total += (size_t)n;
+		}
+		output[total] = '\0';
+		/* Strip trailing newline */
+		if (total > 0 && output[total - 1] == '\n')
+			output[--total] = '\0';
+	}
+
+	close(pipefd[0]);
 
 	int status = 0;
 	int wret = waitpid(pid, &status, 0);
-	alarm(0);  /* cancel alarm */
-
-	sigprocmask(SIG_SETMASK, &omask, NULL);
+	alarm(0);
+	sigaction(SIGALRM, &old_sa, NULL);
 
 	if (wret < 0) {
 		sys_err("waitpid failed for '%s': %s\n", cmd, strerror(errno));
@@ -250,21 +273,8 @@ int sec_exec_command(const char *cmd, char *output, size_t output_len)
 	}
 
 	int exit_code = WEXITSTATUS(status);
-
-	/* For status=0, try to capture output via popen (one-shot, no timeout) */
-	if (output && output_len > 0 && exit_code == 0) {
-		FILE *fp = popen(cmd, "r");
-		if (fp) {
-			size_t r = fread(output, 1, output_len - 1, fp);
-			output[r] = '\0';
-			if (r > 0 && output[r-1] == '\n')
-				output[r-1] = '\0';
-			pclose(fp);
-		}
-	}
-
-	sys_debug("Command '%s' executed successfully (exit=%d)\n",
-		cmd, exit_code);
+	sys_debug("Command '%s' executed (exit=%d, output=%zu bytes)\n",
+		cmd, exit_code, total);
 	return exit_code;
 }
 

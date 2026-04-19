@@ -26,6 +26,9 @@
 
 #define AP_HASH_SIZE  (256)
 #define MAC_FMT        "%02x:%02x:%02x:%02x:%02x:%02x"
+#define MAC_ARG(mac)   (unsigned char)(mac)[0], (unsigned char)(mac)[1], \
+                        (unsigned char)(mac)[2], (unsigned char)(mac)[3], \
+                        (unsigned char)(mac)[4], (unsigned char)(mac)[5]
 
 #define AP_STATUS_UNKNOWN   (0)
 #define AP_STATUS_ONLINE   (1)

@@ -27,10 +27,11 @@
 #include "log.h"
 #include <unistd.h>
 
-/* Default SHORT_STR when SERVER/CLIENT/TEST not defined */
-#ifndef SHORT_STR
-#define SHORT_STR "n:dm:p:l::h"
-#endif
+/*
+ * SHORT_STR and long_arg[] are defined differently for SERVER vs CLIENT.
+ * The definitions below use conditional compilation to select the right
+ * set of options. The #ifdef blocks MUST appear before first use.
+ */
 
 #define has_arg (1)
 static struct option long_arg[] = {
@@ -59,6 +60,10 @@ static struct option long_arg[] = {
 #endif
 #ifdef TEST
 #define SHORT_STR 	"n:dm:l::"
+#endif
+/* Fallback when neither SERVER nor CLIENT nor TEST is defined (e.g. CLI build) */
+#ifndef SHORT_STR
+#define SHORT_STR 	"n:dm:p:l::h"
 #endif
 
 static char *help_array[] = {

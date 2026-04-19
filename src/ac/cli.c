@@ -67,6 +67,33 @@ static void print_usage(const char *prog)
     fprintf(stderr, "  audit <user> <action> <rtype> <rid> <old> <new> <ip>  Write audit log\n");
 }
 
+/* Helper: get string from json object, returns "" if missing */
+static const char *safe_get_str(json_object *obj, const char *key)
+{
+	json_object *jv;
+	if (json_object_object_get_ex(obj, key, &jv) && jv)
+		return json_object_get_string(jv);
+	return "";
+}
+
+/* Helper: get int from json object, returns 0 if missing */
+static int safe_get_int(json_object *obj, const char *key)
+{
+	json_object *jv;
+	if (json_object_object_get_ex(obj, key, &jv) && jv)
+		return json_object_get_int(jv);
+	return 0;
+}
+
+/* Helper: get int as json string, returns "0" if missing */
+static const char *safe_get_int_str(json_object *obj, const char *key)
+{
+	json_object *jv;
+	if (json_object_object_get_ex(obj, key, &jv) && jv)
+		return json_object_to_json_string(jv);
+	return "0";
+}
+
 /* ---- groups ---- */
 static int cmd_groups(void)
 {
@@ -88,10 +115,10 @@ static int cmd_groups(void)
         json_object *g = json_object_array_get_idx(groups, i);
         if (i > 0) printf(",");
         printf("{\"id\":%s,\"name\":\"%s\",\"description\":\"%s\",\"policy\":\"%s\"}",
-            json_object_to_json_string(json_object_object_get(g, "id")),
-            json_object_get_string(json_object_object_get(g, "name") ?: json_object_new_string("")),
-            json_object_get_string(json_object_object_get(g, "description") ?: json_object_new_string("")),
-            json_object_get_string(json_object_object_get(g, "update_policy") ?: json_object_new_string("manual")));
+            safe_get_int_str(g, "id"),
+            safe_get_str(g, "name"),
+            safe_get_str(g, "description"),
+            safe_get_str(g, "update_policy"));
     }
     printf("]}\n");
     json_object_put(root);
@@ -122,15 +149,15 @@ static int cmd_aps(int limit)
         printf("{\"mac\":\"%s\",\"hostname\":\"%s\",\"wan_ip\":\"%s\","
                "\"wifi_ssid\":\"%s\",\"firmware\":\"%s\","
                "\"online_users\":%s,\"device_down\":%s,\"last_seen\":%s,\"group_id\":%s}",
-            json_object_get_string(json_object_object_get(n, "mac") ?: json_object_new_string("")),
-            json_object_get_string(json_object_object_get(n, "hostname") ?: json_object_new_string("")),
-            json_object_get_string(json_object_object_get(n, "wan_ip") ?: json_object_new_string("")),
-            json_object_get_string(json_object_object_get(n, "wifi_ssid") ?: json_object_new_string("")),
-            json_object_get_string(json_object_object_get(n, "firmware") ?: json_object_new_string("")),
-            json_object_to_json_string(json_object_object_get(n, "online_user_num") ?: json_object_new_int(0)),
-            json_object_to_json_string(json_object_object_get(n, "device_down") ?: json_object_new_int(1)),
-            json_object_to_json_string(json_object_object_get(n, "last_seen") ?: json_object_new_int(0)),
-            json_object_to_json_string(json_object_object_get(n, "group_id") ?: json_object_new_int(0)));
+            safe_get_str(n, "mac"),
+            safe_get_str(n, "hostname"),
+            safe_get_str(n, "wan_ip"),
+            safe_get_str(n, "wifi_ssid"),
+            safe_get_str(n, "firmware"),
+            safe_get_int_str(n, "online_user_num"),
+            safe_get_int_str(n, "device_down"),
+            safe_get_int_str(n, "last_seen"),
+            safe_get_int_str(n, "group_id"));
         count++;
     }
     printf("]}\n");
@@ -161,16 +188,16 @@ static int cmd_alarms(int limit)
     for (i = len - 1; i >= 0 && count < limit; i--) {
         json_object *a = json_object_array_get_idx(alarms, i);
         if (i < len - 1) printf(",");
-        int lvl = json_object_get_int(json_object_object_get(a, "level"));
+        int lvl = safe_get_int(a, "level");
         const char *lstr = (lvl >= 0 && lvl <= 3) ? level_str[lvl] : "unknown";
         printf("{\"id\":%s,\"mac\":\"%s\",\"level\":\"%s\","
                "\"message\":\"%s\",\"ack\":%s,\"ts\":\"%s\"}",
-            json_object_to_json_string(json_object_object_get(a, "id")),
-            json_object_get_string(json_object_object_get(a, "ap_mac") ?: json_object_new_string("")),
+            safe_get_int_str(a, "id"),
+            safe_get_str(a, "ap_mac"),
             lstr,
-            json_object_get_string(json_object_object_get(a, "message") ?: json_object_new_string("")),
-            json_object_to_json_string(json_object_object_get(a, "acknowledged") ?: json_object_new_int(0)),
-            json_object_get_string(json_object_object_get(a, "created_at") ?: json_object_new_string("")));
+            safe_get_str(a, "message"),
+            safe_get_int_str(a, "acknowledged"),
+            safe_get_str(a, "created_at"));
         count++;
     }
     printf("]}\n");
@@ -197,7 +224,7 @@ static int cmd_ack(const char *id_str)
     int len = json_object_array_length(alarms);
     for (int i = 0; i < len; i++) {
         json_object *a = json_object_array_get_idx(alarms, i);
-        if (json_object_get_int(json_object_object_get(a, "id")) == alarm_id) {
+        if (safe_get_int(a, "id") == alarm_id) {
             json_object_object_add(a, "acknowledged", json_object_new_int(1));
             json_object_object_add(a, "acknowledged_by", json_object_new_string("admin"));
             json_object_object_add(a, "acknowledged_at", json_object_new_string(""));
@@ -243,7 +270,7 @@ static int cmd_audit(const char *user, const char *action,
     int len = json_object_array_length(logs);
     for (int i = 0; i < len; i++) {
         json_object *l = json_object_array_get_idx(logs, i);
-        int lid = json_object_get_int(json_object_object_get(l, "id"));
+        int lid = safe_get_int(l, "id");
         if (lid > max_id) max_id = lid;
     }
     json_object_put(json_object_object_get(log, "id"));
@@ -275,7 +302,7 @@ static int cmd_ack_all(void)
     int i;
     for (i = 0; i < len; i++) {
         json_object *a = json_object_array_get_idx(alarms, i);
-        if (json_object_get_int(json_object_object_get(a, "acknowledged")) == 0) {
+        if (safe_get_int(a, "acknowledged") == 0) {
             json_object_object_add(a, "acknowledged", json_object_new_int(1));
             json_object_object_add(a, "acknowledged_by", json_object_new_string("admin"));
             json_object_object_add(a, "acknowledged_at", json_object_new_string(""));
@@ -313,11 +340,11 @@ static int cmd_firmwares(void)
         if (i < len - 1) printf(",");
         printf("{\"version\":\"%s\",\"filename\":\"%s\","
                "\"size\":%d,\"sha256\":\"%s\",\"uploaded_at\":\"%s\"}",
-            json_object_get_string(json_object_object_get(fw, "version") ?: json_object_new_string("")),
-            json_object_get_string(json_object_object_get(fw, "filename") ?: json_object_new_string("")),
-            json_object_get_int(json_object_object_get(fw, "file_size")),
-            json_object_get_string(json_object_object_get(fw, "sha256") ?: json_object_new_string("")),
-            json_object_get_string(json_object_object_get(fw, "uploaded_at") ?: json_object_new_string("")));
+            safe_get_str(fw, "version"),
+            safe_get_str(fw, "filename"),
+            safe_get_int(fw, "file_size"),
+            safe_get_str(fw, "sha256"),
+            safe_get_str(fw, "uploaded_at"));
     }
     printf("]}\n");
     json_object_put(root);
@@ -336,10 +363,10 @@ static int cmd_stats(void)
     if (json_object_object_get_ex(root, "nodes", &nodes) &&
         json_object_is_type(nodes, json_type_array)) {
         ap_total = json_object_array_length(nodes);
-        int len = ap_total;
-        for (int i = 0; i < len; i++) {
+        int nlen = ap_total;
+        for (int i = 0; i < nlen; i++) {
             json_object *n = json_object_array_get_idx(nodes, i);
-            if (json_object_get_int(json_object_object_get(n, "device_down")) == 0)
+            if (safe_get_int(n, "device_down") == 0)
                 ap_online++;
         }
     }
@@ -347,10 +374,10 @@ static int cmd_stats(void)
     json_object *ev;
     if (json_object_object_get_ex(root, "alarm_events", &ev) &&
         json_object_is_type(ev, json_type_array)) {
-        int len = json_object_array_length(ev);
-        for (int i = 0; i < len; i++) {
+        int alen = json_object_array_length(ev);
+        for (int i = 0; i < alen; i++) {
             json_object *a = json_object_array_get_idx(ev, i);
-            if (json_object_get_int(json_object_object_get(a, "acknowledged")) == 0)
+            if (safe_get_int(a, "acknowledged") == 0)
                 alarms++;
         }
     }

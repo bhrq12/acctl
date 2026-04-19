@@ -44,7 +44,7 @@
 #include "resource.h"
 #include "sec.h"
 #include "dllayer.h"
-#include "sql.h"
+#include "db.h"
 #include <sys/socket.h>
 
 volatile int ap_reg_cnt = 0;  /* registration counter for stats */
@@ -202,7 +202,7 @@ static void __ap_status(struct ap_t *ap, struct msg_ap_status_t *msg, int len)
 
 		offset += snprintf(p + offset, ssids_json_size - offset, "]}");
 
-		sql_ap_upsert(ap->mac, ap->hostname, ap->wan_ip,
+		db_ap_upsert(ap->mac, ap->hostname, ap->wan_ip,
 			primary_ssid[0] ? primary_ssid : ap->wifi_ssid,
 			ap->firmware, total_clients, ssids_json);
 
@@ -212,7 +212,7 @@ static void __ap_status(struct ap_t *ap, struct msg_ap_status_t *msg, int len)
 		snprintf(json_buf, sizeof(json_buf),
 			"{\"online_user_num\":%d,\"ssid_count\":%d}",
 			total_clients, status->ssidnum);
-		sql_ap_upsert(ap->mac, ap->hostname, ap->wan_ip,
+		db_ap_upsert(ap->mac, ap->hostname, ap->wan_ip,
 			primary_ssid[0] ? primary_ssid : ap->wifi_ssid,
 			ap->firmware, total_clients, json_buf);
 	}
@@ -289,7 +289,7 @@ static void __ap_reg(struct ap_hash_t *aphash,
 	if (chap_msg_cmp_md5((void *)msg, sizeof(*msg), ac.random) != 0) {
 		sys_err("CHAP verification failed for %s\n", mac_str);
 		/* Log failed attempt for audit */
-		sql_audit_log("system", "AP_REG_FAIL", "ap",
+		db_audit_log("system", "AP_REG_FAIL", "ap",
 			mac_str, NULL, NULL, argument.addr.sin_addr.s_addr ?
 			inet_ntoa(argument.addr.sin_addr) : "unknown");
 		return;
@@ -305,7 +305,7 @@ static void __ap_reg(struct ap_hash_t *aphash,
 
 	/* 4. Check for AP already registered to another AC (MSG_AP_RESP) */
 	char other_ac_uuid[UUID_LEN];
-	if (sql_ap_get_field((const char *)msg->header.mac, "registered_ac",
+	if (db_ap_get_field((const char *)msg->header.mac, "registered_ac",
 			other_ac_uuid, sizeof(other_ac_uuid)) == 0 &&
 		other_ac_uuid[0] != '\0' &&
 		!__uuid_equ(other_ac_uuid, ac.acuuid)) {
@@ -390,7 +390,7 @@ static void __ap_reg(struct ap_hash_t *aphash,
 			sizeof(wan_ip_str));
 
 	/* 9. Update database */
-	sql_ap_upsert((const char *)msg->header.mac,
+	db_ap_upsert((const char *)msg->header.mac,
 		aphash->ap.hostname[0] ? aphash->ap.hostname : mac_str,
 		wan_ip_str[0] ? wan_ip_str : ip_str,
 		aphash->ap.wifi_ssid,
@@ -470,8 +470,8 @@ static void *ap_heartbeat_check(void *arg)
 			sys_warn("AP offline: %s (last seen: %lds ago)\n",
 				mac_str, (long)(now - s->last_seen));
 
-			sql_ap_set_offline(mac_str);
-			sql_alarm_insert(2, mac_str,
+			db_ap_set_offline(mac_str);
+			db_alarm_insert(2, mac_str,
 				"AP offline - no heartbeat", NULL);
 
 			if (s->sock >= 0)
@@ -586,7 +586,7 @@ void ap_lost(int sock)
 			mac_copy[2], mac_copy[3],
 			mac_copy[4], mac_copy[5]);
 		sys_debug("AP lost (sock=%d): %s\n", sock, mac_str);
-		sql_ap_set_offline(mac_str);
+		db_ap_set_offline(mac_str);
 	}
 }
 

@@ -24,7 +24,7 @@
 
 #include "log.h"
 #include "resource.h"
-#include "sql.h"
+#include "db.h"
 #include "arg.h"
 #include "mjson.h"
 #include <pthread.h>
@@ -84,7 +84,7 @@ struct _ip_t *res_ip_alloc(struct sockaddr_in *addr, char *mac)
 				return new_ip;
 			}
 		}
-		/* Requested IP not in pool â€?fall through to auto-allocate */
+		/* Requested IP not in pool ï¿½?fall through to auto-allocate */
 	}
 
 	/* Auto-allocate from available pool (FIFO) */
@@ -236,7 +236,7 @@ void res_ip_reload(void)
 	char buffer[1024];
 
 	/* Read resource config from database */
-	if (sql_query_res(sql, buffer, sizeof(buffer)) != 0) {
+	if (db_query_res(db, buffer, sizeof(buffer)) != 0) {
 		sys_err("Failed to read resource from database\n");
 		return;
 	}
@@ -324,7 +324,7 @@ void *res_check(void *arg)
 		sys_debug("Checking IP pool from database (interval=%ds)\n",
 			argument.reschkitv);
 
-		if (sql_query_res(sql, buffer, sizeof(buffer)) == 0) {
+		if (db_query_res(db, buffer, sizeof(buffer)) == 0) {
 			int status = json_read_object(buffer, json_attrs, NULL);
 			if (status == 0) {
 				res_ip_reload();

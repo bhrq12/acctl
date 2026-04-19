@@ -42,7 +42,7 @@
 #include "netlayer.h"
 #include "resource.h"
 #include "dllayer.h"
-#include "sql.h"
+#include "db.h"
 #include "sec.h"
 #include "log.h"
 #include <sys/resource.h>

@@ -89,7 +89,7 @@ void *message_travel(void *arg)
 			continue;
 
 		while ((msg = message_delete()) != NULL) {
-			msg_proc(msg->data, msg->len, msg->proto);
+			ap_msg_proc(msg->data, msg->len, msg->proto);
 			message_free(msg);
 		}
 	}
