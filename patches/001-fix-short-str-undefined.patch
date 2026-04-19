@@ -1,0 +1,14 @@
+--- a/src/lib/cmdarg.c
++++ b/src/lib/cmdarg.c
+@@ -28,6 +28,11 @@
+ #include "log.h"
+ #include <unistd.h>
+ 
++/* Default SHORT_STR when SERVER/CLIENT/TEST not defined */
++#ifndef SHORT_STR
++#define SHORT_STR "n:dm:p:l::h"
++#endif
++
+ #define has_arg (1)
+ static struct option long_arg[] = {
+ 	{"nic", has_arg, 0, 'n'},

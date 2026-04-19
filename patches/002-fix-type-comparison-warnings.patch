@@ -1,0 +1,35 @@
+--- a/src/lib/dllayer.c
++++ b/src/lib/dllayer.c
+@@ -209,7 +209,7 @@ void __dll_buildpkt(char *dmac, char *data, int size)
+ {
+ 	assert(dmac != NULL && data != NULL && 
+-		size <= DLL_PKT_DATALEN);
++		(unsigned int)size <= DLL_PKT_DATALEN);
+ 
+ 	struct dlleth_t *deth = (void *)dllsdr.sdrpkt;
+ 	memcpy(&deth->hdr.h_dest[0], dmac, ETH_ALEN);
+@@ -246,7 +246,7 @@ int dll_sendpkt(char *dmac, char *data, int size)
+ {
+-	assert(dmac != NULL && size <= DLL_PKT_DATALEN && 
++	assert(dmac != NULL && (unsigned int)size <= DLL_PKT_DATALEN && 
+ 		data != NULL);
+ 	int ret;
+ 
+@@ -269,7 +269,7 @@ int dll_sendpkt(char *dmac, char *data, int size)
+ 
+ int dll_brdcast(char *data, int size)
+ {
+-	assert(size <= DLL_PKT_DATALEN && data != NULL);
++	assert((unsigned int)size <= DLL_PKT_DATALEN && data != NULL);
+ 
+ 	int ret;
+ 	struct dlleth_t *deth = (void *)dllbrd.brdpkt;
+@@ -293,7 +293,7 @@ int dll_brdcast(char *data, int size)
+ 
+ int dll_rcv(char *data, int size, char *src_mac_out)
+ {
+-	assert(size <= DLL_PKT_DATALEN && data != NULL);
++	assert((unsigned int)size <= DLL_PKT_DATALEN && data != NULL);
+ 
+ 	dllrcv.recvlen = sizeof(struct sockaddr_ll);
+ 
